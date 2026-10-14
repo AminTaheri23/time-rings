@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Time Rings</title>
+<style>
+:root{
+  --bg:#f4f6fa; --bg2:#e6eaf4; --panel:#ffffff; --panel2:#f2f4f9; --fg:#141821; --muted:#5f6979; --border:#dce1eb;
+  --accent:#3563e9; --on-accent:#ffffff; --accent-ring:rgba(53,99,233,.25); --danger:#d13535; --shadow:0 8px 28px rgba(22,28,45,.09);
+  --radius:16px;
+  --font: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+:root[data-theme="dark"]{
+  --bg:#090b10; --bg2:#151a27; --panel:#12161f; --panel2:#191e2a; --fg:#edf0f7; --muted:#8d97a9; --border:#242b39;
+  --accent:#7c9cff; --on-accent:#0b1020; --accent-ring:rgba(124,156,255,.3); --danger:#ff6b6b; --shadow:0 10px 36px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#090b10; --bg2:#151a27; --panel:#12161f; --panel2:#191e2a; --fg:#edf0f7; --muted:#8d97a9; --border:#242b39;
+    --accent:#7c9cff; --on-accent:#0b1020; --accent-ring:rgba(124,156,255,.3); --danger:#ff6b6b; --shadow:0 10px 36px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0}
+body{
+  font-family:var(--font); color:var(--fg); background-color:var(--bg);
+  background-image:radial-gradient(1100px 650px at 50% -12%, var(--bg2), transparent 70%);
+  background-attachment:fixed; min-height:100vh; -webkit-font-smoothing:antialiased;
+  transition:background-color .45s ease, color .45s ease;
+}
+button,input,select{font:inherit;color:inherit}
+svg{display:block}
+.app{max-width:1440px;margin:0 auto;padding:10px 16px 24px}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:.01em}
+.brand svg{width:28px;height:28px}
+.actions{display:flex;gap:6px;align-items:center}
+.icon-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--panel);display:grid;place-items:center;cursor:pointer;transition:transform .15s ease, background-color .25s, border-color .25s, color .25s}
+.icon-btn:hover{transform:translateY(-1px);border-color:var(--muted)}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn{height:38px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .15s ease, background-color .25s, border-color .25s}
+.btn svg{width:16px;height:16px}
+.btn:hover{transform:translateY(-1px);border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* layout */
+.main{display:flex;flex-direction:column;align-items:center}
+.stage{display:flex;flex-direction:column;align-items:center;width:100%}
+.side{width:100%}
+/* --other = height of everything except the dial (measured in JS), so dial + one card row fit the window */
+.dial-wrap{position:relative;width:max(240px, min(94vw, calc(100vh - var(--other, 330px)), 760px));aspect-ratio:1/1;margin:4px auto 2px}
+
+/* bookmarks / most visited strip */
+.bm{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:4px 0;margin:2px 0 0;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
+.bm::-webkit-scrollbar{display:none}
+.bm-item{display:inline-flex;align-items:center;gap:7px;flex:none;max-width:190px;height:32px;padding:0 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--fg);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;transition:background-color .2s,border-color .2s}
+.bm-item:hover,.bm-item[aria-expanded="true"]{background:var(--panel);border-color:var(--border)}
+.bm-item img,.bm-item svg{width:16px;height:16px;flex:none;border-radius:3px}
+.bm-item svg{color:var(--muted)}
+.bm-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bm-empty{font-size:13px;color:var(--muted);padding:7px 6px}
+.bm-menu{position:fixed;z-index:30;min-width:230px;max-width:min(340px,92vw);max-height:min(60vh,480px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:6px;animation:dlgIn .22s cubic-bezier(.2,.8,.2,1)}
+.bm-menu a{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;color:var(--fg);text-decoration:none;font-size:13px}
+.bm-menu a:hover,.bm-menu a:focus-visible{background:var(--panel2)}
+.bm-menu img{width:16px;height:16px;flex:none;border-radius:3px}
+.bm-menu span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bm-menu h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 9px 4px;font-weight:700}
+.bm-menu .sub{margin-left:12px;padding-left:4px;border-left:1px solid var(--border)}
+.bm-menu .none{font-size:13px;color:var(--muted);padding:7px 9px}
+#dial{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;-webkit-tap-highlight-color:transparent}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:var(--cs,180px);height:var(--cs,180px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;transition:width .5s cubic-bezier(.2,.8,.2,1),height .5s cubic-bezier(.2,.8,.2,1)}
+.c-label{font-size:max(9px, calc(var(--cs) * .072));font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
+.c-main{font-size:calc(var(--cs) * .17);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.08;letter-spacing:-.01em;margin:.1em 0 .12em;white-space:nowrap;transition:font-size .3s ease}
+.c-sub{font-size:max(9px, calc(var(--cs) * .066));color:var(--muted);max-width:86%;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.center.swap > *{animation:swapIn .38s cubic-bezier(.2,.8,.2,1) both}
+.center.swap > .c-main{animation-delay:.03s}
+.center.swap > .c-sub{animation-delay:.06s}
+@keyframes swapIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+
+.legend{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;color:var(--muted);margin:2px auto 6px;cursor:pointer;border:1px solid transparent;background:transparent;padding:6px 12px;border-radius:999px;transition:background-color .25s,border-color .25s}
+.legend:hover{background:var(--panel);border-color:var(--border)}
+.legend .grad{width:min(40vw,200px);height:8px;border-radius:4px;transition:background .4s}
+.legend b{color:var(--fg);font-weight:600}
+
+/* readout cards */
+/* one horizontal row; scrolls sideways when it doesn't fit; auto margins center it without clipping */
+.readout{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:6px 4px 12px;margin:0 -4px;scrollbar-width:thin;scroll-snap-type:x proximity;position:relative}
+.readout > :first-child{margin-left:auto}
+.readout > :last-child{margin-right:auto}
+.readout .card{flex:1 1 0;min-width:138px;max-width:230px;scroll-snap-align:start}
+.readout .card.add{flex:0 0 96px;min-width:96px;min-height:0}
+.card.dragging{z-index:5;cursor:grabbing;box-shadow:0 0 0 1px var(--c), 0 10px 24px rgba(0,0,0,.28) !important;opacity:1 !important}
+body.sorting, body.sorting *{cursor:grabbing !important}
+.card{-webkit-touch-callout:none}
+.card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px 12px;text-align:left;transition:transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s, border-color .28s, opacity .28s;animation:cardIn .5s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}}
+.card.hl{border-color:var(--c);box-shadow:0 0 0 1px var(--c), 0 4px 12px rgba(0,0,0,.14);transform:translateY(-2px)}
+.readout.has-hl .card:not(.hl){opacity:.5}
+.card .top{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.card .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .pct{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 0 3px var(--ct);transition:background-color .25s, box-shadow .25s, transform .2s}
+.vis{width:22px;height:22px;margin:-6px -4px -6px -7px;padding:0;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none}
+.vis:hover .dot{transform:scale(1.3)}
+.card[data-key]{cursor:pointer;-webkit-user-select:none;user-select:none}
+.card[data-key]:active{transform:scale(.985)}
+.card.off{background:transparent;border-style:dashed}
+.card.off:hover{border-color:var(--muted)}
+.card.off .val{color:var(--muted)}
+.card.off .bar i{background:var(--muted);opacity:.4}
+.card.off .dot{background:transparent;box-shadow:inset 0 0 0 1.6px var(--c)}
+.card .val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .sub{font-size:12px;color:var(--muted);margin-top:2px;min-height:1.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:5px;border-radius:3px;background:var(--ct);margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--c);border-radius:3px;transition:width .25s linear}
+.card .ctl{display:flex;gap:6px;margin-top:10px}
+.card .ctl button{flex:1;height:28px;border-radius:9px;border:1px solid var(--border);background:var(--panel2);cursor:pointer;font-size:12px;font-weight:600;transition:border-color .2s,background-color .2s}
+.card .ctl button:hover{border-color:var(--muted)}
+.card.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-style:dashed;color:var(--muted);cursor:pointer;min-height:112px;font-weight:600;font-size:14px;background:transparent}
+.card.add svg{width:20px;height:20px}
+.card.add:hover{color:var(--fg);border-color:var(--muted)}
+.card.done{animation:cardIn .5s backwards, donePulse 1.4s ease-in-out infinite}
+@keyframes donePulse{50%{box-shadow:0 0 0 3px var(--c)}}
+.foot{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 0}
+
+.onboard{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin:0 auto 8px;max-width:640px;font-size:14px;animation:cardIn .5s both}
+.onboard span{font-weight:600}
+@media (max-width:440px){ #addTimerBtn span{display:none} #addTimerBtn{padding:0 11px} .brand span{font-size:15px} }
+
+/* finished-timer glow: behind the content, above the page background */
+.alarm{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0}
+.alarm.on{animation:alarmBreathe 3.6s ease-in-out infinite}
+@keyframes alarmBreathe{0%,100%{opacity:.12}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){ .alarm.on{animation:none !important;opacity:.7} }
+
+/* daily briefing caption */
+.brief{position:fixed;left:50%;bottom:max(18px, env(safe-area-inset-bottom));z-index:15;width:min(560px, calc(100vw - 32px));transform:translateX(-50%);
+  background:color-mix(in srgb, var(--panel) 88%, transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:12px 16px 12px;animation:briefIn .5s cubic-bezier(.2,.8,.2,1) both}
+.brief.out{animation:briefOut .35s ease forwards}
+@keyframes briefIn{from{opacity:0;transform:translate(-50%,18px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes briefOut{to{opacity:0;transform:translate(-50%,12px)}}
+.brief-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;color:var(--muted)}
+.brief-dots{display:flex;gap:5px}
+.brief-dots i{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background-color .3s, transform .3s}
+.brief-dots i.on{background:var(--c, var(--accent));transform:scale(1.3)}
+.brief-dots i.done{background:var(--muted)}
+.brief-title{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c, var(--accent));margin-top:8px;transition:color .3s}
+.brief-text{font-size:16px;line-height:1.45;margin:4px 0 0;min-height:2.9em}
+.brief-body.swap > *{animation:swapIn .4s cubic-bezier(.2,.8,.2,1) both}
+.brief-bar{height:3px;border-radius:2px;background:var(--border);margin:10px 0 8px;overflow:hidden}
+.brief-bar i{display:block;height:100%;width:0;background:var(--c, var(--accent));border-radius:2px}
+.brief-actions{display:flex;align-items:center;gap:6px}
+.brief-actions .btn{height:32px;padding:0 12px;font-size:13px}
+.brief-hint{flex:1;font-size:12px;color:var(--muted)}
+.brief.paused .brief-hint{color:var(--fg)}
+@media (max-width:440px){ .brief-hint{display:none} .brief-actions{justify-content:flex-end} .brief-text{font-size:15px} }
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(5,8,15,.38);opacity:0;pointer-events:none;transition:opacity .3s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);background:var(--panel);border-left:1px solid var(--border);box-shadow:var(--shadow);transform:translateX(104%);transition:transform .4s cubic-bezier(.2,.8,.2,1);z-index:21;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.drawer-head h2{font-size:17px;margin:0}
+.drawer-body{overflow-y:auto;padding:0 16px 28px;overscroll-behavior:contain}
+.drawer section{padding:16px 0;border-bottom:1px solid var(--border)}
+.drawer section.last{border-bottom:0}
+.drawer h3{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
+.h3note{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px}
+.field{display:flex;flex-direction:column;gap:5px;font-size:13px;margin-bottom:10px}
+.field > span{color:var(--muted);font-weight:600}
+input[type=text],input[type=date],input[type=number],input[type=datetime-local],select{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);padding:0 10px;outline:none;min-width:0;transition:border-color .2s, box-shadow .2s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+select{cursor:pointer}
+select:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.45}
+.hint code{font-size:11.5px;background:var(--panel2);padding:1px 5px;border-radius:5px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;font-size:14px}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;flex:none}
+.seg button{border:0;background:transparent;padding:5px 10px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:background-color .2s,color .2s,box-shadow .2s;white-space:nowrap}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.seg button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.seg.full{display:flex;width:100%;margin:2px 0 6px}
+.seg.full button{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--border);background:var(--panel2);padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;transition:background-color .2s,color .2s,border-color .2s}
+.chip:hover{border-color:var(--muted)}
+.chip.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.list{display:flex;flex-direction:column}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;min-height:42px}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.switch i{width:40px;height:23px;border-radius:12px;background:var(--border);position:relative;transition:background-color .25s;flex:none}
+.switch i::after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .28s cubic-bezier(.3,1.4,.5,1)}
+.switch input:checked + i{background:var(--c, var(--accent))}
+.switch input:checked + i::after{transform:translateX(17px)}
+.switch input:focus-visible + i{outline:2px solid var(--accent);outline-offset:2px}
+.rl{display:flex;align-items:center;gap:10px;min-width:0;font-size:14px}
+.rl small{display:block;font-size:11.5px;color:var(--muted);font-weight:500;margin-top:1px}
+.sw{width:14px;height:14px;border-radius:5px;background:var(--c);flex:none;transition:background-color .3s}
+.glyph{width:16px;text-align:center;flex:none;opacity:.85;font-size:13px}
+.mc-row{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 0 10px 24px;transition:opacity .25s}
+.mc-row.dim{opacity:.4}
+.mc-row .note{font-size:12px;color:var(--muted)}
+.mc{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+.mc input[type=color]{width:28px;height:22px;padding:1px;border-radius:6px}
+.loc-row{display:flex;gap:8px;margin-top:-4px}
+.loc-row input{flex:1;width:0}
+.pal-strip{height:10px;border-radius:5px;margin:2px 0 4px;transition:background .4s}
+
+/* timer dialog */
+dialog{border:1px solid var(--border);border-radius:20px;background:var(--panel);color:var(--fg);padding:18px;width:min(380px,92vw);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(5,8,15,.45)}
+dialog[open]{animation:dlgIn .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes dlgIn{from{opacity:0;transform:translateY(12px) scale(.97)}}
+dialog h2{font-size:17px;margin:0 0 12px}
+.dur{display:flex;gap:8px;margin:8px 0}
+.dur label{flex:1;display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);font-weight:600}
+.dur input{width:100%}
+.swatches{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.swatches button{width:22px;height:22px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--border);cursor:pointer;background:var(--c);padding:0;transition:transform .15s}
+.swatches button:hover{transform:scale(1.12)}
+.swatches button.on{box-shadow:0 0 0 2px var(--fg)}
+input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);padding:2px;cursor:pointer}
+.err{color:var(--danger);font-size:12.5px;min-height:1.1em;margin:6px 0 0}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="#8b5cf6" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="58 100" transform="rotate(90 16 16)"/>
+        <circle cx="16" cy="16" r="8.5" fill="none" stroke="#22d3ee" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="36 100" transform="rotate(90 16 16)"/>
+        <circle cx="16" cy="16" r="4" fill="none" stroke="#ff3b30" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="16 100" transform="rotate(90 16 16)"/>
+      </svg>
+      <span>Time Rings</span>
+    </div>
+    <div class="actions">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Theme"></button>
+      <button class="icon-btn" id="cbBtn" type="button" aria-label="Color-blind friendly colors" title="Color-blind friendly colors" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button class="btn" id="addTimerBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Timer</span>
+      </button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </header>
+  <nav class="bm" id="bm" aria-label="Bookmarks" hidden></nav>
+
+  <main class="main">
+    <div class="stage">
+      <div class="dial-wrap" id="dialWrap">
+        <canvas id="dial" role="img" aria-label="Circular time rings"></canvas>
+        <div class="center" id="center">
+          <div class="c-label" id="cLabel"></div>
+          <div class="c-main" id="cMain"></div>
+          <div class="c-sub" id="cSub"></div>
+        </div>
+      </div>
+      <button class="legend" id="legend" type="button" title="Switch color palette">
+        <span>fast</span><span class="grad" id="legendGrad"></span><span>slow</span><b id="legendName"></b>
+      </button>
+    </div>
+    <div class="side">
+      <div class="onboard" id="onboard" hidden>
+        <span>Add your birthdate to light up the Age ring</span>
+        <input type="date" id="obDate" aria-label="Birthdate">
+        <button class="btn primary" id="obSave" type="button">Save</button>
+        <button class="btn ghost" id="obLater" type="button">Later</button>
+      </div>
+      <div class="readout" id="readout"></div>
+      <p class="foot">Drag cards to reorder rings (left = outermost) · click to show or hide · hover a ring to explore</p>
+    </div>
+  </main>
+</div>
+
+<div class="alarm" id="alarm" aria-hidden="true"></div>
+<section class="brief" id="brief" hidden aria-label="Daily briefing">
+  <div class="brief-top"><span id="briefHello"></span><span class="brief-dots" id="briefDots"></span></div>
+  <div class="brief-body" id="briefBody">
+    <div class="brief-title" id="briefTitle"></div>
+    <p class="brief-text" id="briefText" aria-live="polite"></p>
+  </div>
+  <div class="brief-bar"><i id="briefProg"></i></div>
+  <div class="brief-actions">
+    <span class="brief-hint" id="briefHint">Hover to pause</span>
+    <button class="btn ghost" id="briefSkip" type="button">Skip</button>
+    <button class="btn ghost" id="briefBack" type="button" aria-label="Previous">‹</button>
+    <button class="btn primary" id="briefNext" type="button">Next ›</button>
+  </div>
+</section>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Settings">
+  <div class="drawer-head">
+    <h2>Settings</h2>
+    <button class="icon-btn" id="closeDrawer" type="button" aria-label="Close settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <section>
+      <h3>You</h3>
+      <label class="field"><span>Birthdate</span><input type="date" id="birthdate"></label>
+      <label class="field"><span>Important ages</span><input type="text" id="milestones" spellcheck="false" autocomplete="off"></label>
+      <p class="hint">Comma-separated, 1–100. Add a name after the age, like <code>65 Retirement</code>.</p>
+    </section>
+    <section>
+      <h3>Preset</h3>
+      <div class="chips" id="presets"></div>
+    </section>
+    <section>
+      <h3>Rings <span class="h3note">color = how fast it cycles</span></h3>
+      <div class="list" id="ringList"></div>
+    </section>
+    <section>
+      <h3>Meaning colors <span class="h3note">color shows what the time means</span></h3>
+      <div class="list" id="meaningList"></div>
+      <label class="field" style="margin-top:6px"><span>Location for sunrise and seasons</span></label>
+      <div class="loc-row">
+        <input type="number" id="lat" step="0.01" min="-90" max="90" aria-label="Latitude">
+        <input type="number" id="lon" step="0.01" min="-180" max="180" aria-label="Longitude">
+        <button class="btn ghost" id="locAuto" type="button">Auto</button>
+      </div>
+      <p class="hint" id="locHint"></p>
+      <button class="btn ghost" id="mcReset" type="button">Reset meaning colors</button>
+    </section>
+    <section>
+      <h3>Markers</h3>
+      <div class="list" id="markerList"></div>
+    </section>
+    <section>
+      <h3>Look</h3>
+      <div class="row"><span>Ring style</span><div class="seg" data-key="style" data-opts="arcs:Filling arcs,dot:Dial + dot"></div></div>
+      <div class="row"><span>Theme</span><div class="seg" data-key="theme" data-opts="auto:Auto,light:Light,dark:Dark"></div></div>
+      <div class="row"><span>Palette</span><select id="palette" aria-label="Palette"></select></div>
+      <div class="pal-strip" id="palStrip"></div>
+      <p class="hint" id="palDesc"></p>
+      <label class="switch"><span>Color-blind friendly</span><input type="checkbox" id="colorblind"><i></i></label>
+      <label class="switch"><span>Labels on rings</span><input type="checkbox" id="labels"><i></i></label>
+      <label class="switch"><span>Smooth seconds</span><input type="checkbox" id="smooth"><i></i></label>
+      <label class="switch"><span>Seconds digits</span><input type="checkbox" id="secDigits"><i></i></label>
+      <p class="hint">Turn off to hide the ticking seconds in the clock, cards and timers. The seconds ring keeps moving.</p>
+    </section>
+    <section>
+      <h3>Layout</h3>
+      <div class="row"><span>Ring order</span>
+        <select id="order" aria-label="Ring order">
+          <option value="slowOut">Slowest outside</option>
+          <option value="sketch">Month outside (sketch)</option>
+          <option value="fastOut">Fastest outside</option>
+          <option value="custom" disabled>Custom (dragged)</option>
+        </select>
+      </div>
+      <p class="hint">Or drag the cards under the dial: left is the outermost ring. With the keyboard, focus a card’s dot and press Alt + ← / →.</p>
+      <div class="row"><span>Zero point</span><div class="seg" data-key="start" data-opts="bottom:Bottom,top:Top"></div></div>
+      <div class="row"><span>Hour ring</span><div class="seg" data-key="hour12" data-opts="false:24 h,true:12 h"></div></div>
+      <div class="row"><span>Week starts</span><div class="seg" data-key="weekStart" data-opts="0:Sunday,1:Monday"></div></div>
+    </section>
+    <section>
+      <h3>Shortcuts</h3>
+      <div class="row"><span>Show</span><div class="seg" data-key="shortcuts" data-opts="off:Off,bar:Bookmarks bar,top:Most visited"></div></div>
+      <p class="hint" id="bmHint"></p>
+    </section>
+    <section>
+      <h3>Daily briefing</h3>
+      <label class="switch"><span>Brief me on the first new tab of each day</span><input type="checkbox" id="briefOn"><i></i></label>
+      <p class="hint">Walks through your life, year, month, week and today, one ring at a time (never minutes or seconds). Each step stays up long enough to read at an average 238 words per minute, plus 20%. Hover the caption to pause; Esc or a click skips.</p>
+      <button class="btn" id="briefPlay" type="button">Play the briefing now</button>
+    </section>
+    <section class="last">
+      <button class="btn danger" id="resetAll" type="button">Reset everything</button>
+      <p class="hint">Settings, birthdate and timers are stored only in this browser (localStorage).</p>
+    </section>
+  </div>
+</aside>
+
+<dialog id="timerDlg" aria-label="New timer">
+  <form id="timerForm" novalidate>
+    <h2>New timer</h2>
+    <label class="field"><span>Label</span><input type="text" id="tLabel" maxlength="24" placeholder="Focus" autocomplete="off"></label>
+    <div class="seg full" id="tType">
+      <button type="button" data-v="duration">Countdown</button>
+      <button type="button" data-v="until">Until a date</button>
+    </div>
+    <div id="tDurBox">
+      <div class="dur">
+        <label><input type="number" id="tH" min="0" max="999" inputmode="numeric" value="0" aria-label="Hours">h</label>
+        <label><input type="number" id="tM" min="0" max="59" inputmode="numeric" value="25" aria-label="Minutes">m</label>
+        <label><input type="number" id="tS" min="0" max="59" inputmode="numeric" value="0" aria-label="Seconds">s</label>
+      </div>
+      <div class="chips" id="tQuick">
+        <button type="button" class="chip" data-m="1">1 m</button>
+        <button type="button" class="chip" data-m="5">5 m</button>
+        <button type="button" class="chip" data-m="10">10 m</button>
+        <button type="button" class="chip" data-m="25">25 m</button>
+        <button type="button" class="chip" data-m="60">1 h</button>
+      </div>
+    </div>
+    <div id="tUntilBox" hidden>
+      <label class="field"><span>Date and time</span><input type="datetime-local" id="tUntil"></label>
+    </div>
+    <div class="row"><span>Color</span><div class="swatches" id="tSwatches"></div></div>
+    <p class="err" id="tErr"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="tCancel">Cancel</button>
+      <button type="submit" class="btn primary">Start</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
