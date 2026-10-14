@@ -32,6 +32,7 @@ Seconds, minutes, hours, day of week, day of month, month and your age (0–100)
 - [Project layout](#project-layout)
 - [Development](#development)
 - [Known limitations](#known-limitations)
+- [Inspiration](#inspiration)
 - [License](#license)
 
 ## Quick start
@@ -296,6 +297,12 @@ Handy checks while developing:
 - Sunrise and sunset come from the time zone, so they are approximate (within minutes) for places far from the zone's reference city.
 - The "typical American" life data are US averages and will not fit everyone.
 - Chrome's extension Errors page can keep old entries after an update until you clear them.
+
+## Inspiration
+
+- **Kurzgesagt's "Timeline of Your Life" poster.** Kurzgesagt's [Timeline of Your Life poster](https://shop-us.kurzgesagt.org/products/lifespan-timeline-poster) fits a whole lifespan onto one page. It is the idea behind the age ring (0-100), which makes the length of a life something you can see.
+- **Visual timers.** I found out about visual timers from [Ruri Ohama's video on ADHD purchases](https://www.youtube.com/watch?v=SLTxcIhJgmI&t=1098s), which showed a [rainbow visual countdown timer](https://www.amazon.com/Yunbaoit-Protective-Rainbow-Countdown-Management/dp/B0CQMCW3R4). Seeing the time left as a shrinking colored area, rather than as digits, inspired the timer rings.
+- **Circles all the way down.** The solar system and the Earth's motion are circular: the Earth spins once a day, the Moon circles the Earth, the Earth circles the Sun once a year. One night I realized a time visualizer should show the same thing, so it draws time as concentric rings and not as a line or a row of digits.
 
 ## License
 
