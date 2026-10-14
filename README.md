@@ -4,6 +4,12 @@
 
 Seconds, minutes, hours, day of week, day of month, month and your age (0–100) are drawn as concentric rings that fill as time passes. Each ring is colored by what it means, and every part can be toggled, reordered and customized. Everything runs in your browser. There is no server, no build step and no tracking.
 
+**[▶ Try it live in your browser](https://amintaheri23.github.io/time-rings/)**
+
+<video src="https://github.com/AminTaheri23/time-rings/raw/main/docs/demo.mp4" controls muted width="100%"></video>
+
+[Watch the demo video](docs/demo.mp4)
+
 ![Time Rings with every ring on](docs/screenshots/everything-dark.png)
 
 ## Contents
