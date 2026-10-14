@@ -6,9 +6,9 @@ Seconds, minutes, hours, day of week, day of month, month and your age (0–100)
 
 **[▶ Try it live in your browser](https://amintaheri23.github.io/time-rings/)**
 
-<video src="https://github.com/AminTaheri23/time-rings/raw/main/docs/demo.mp4" controls muted width="100%"></video>
+![Time Rings demo](docs/demo.gif)
 
-[Watch the demo video](docs/demo.mp4)
+[Watch the full-quality video](docs/demo.mp4)
 
 ![Time Rings with every ring on](docs/screenshots/everything-dark.png)
 
