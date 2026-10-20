@@ -237,6 +237,16 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-r
 .err{color:var(--danger);font-size:12.5px;min-height:1.1em;margin:6px 0 0}
 .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 
+/* minimal display: just the dial and the clock; the top bar shrinks to a faint corner cluster (toggle + settings) */
+body.minimal .bm, body.minimal #legend, body.minimal .side, body.minimal .brand,
+body.minimal #themeBtn, body.minimal #cbBtn, body.minimal #addTimerBtn{display:none}
+body.minimal .topbar{position:fixed;top:10px;right:12px;z-index:5;padding:0;opacity:.35;transition:opacity .25s}
+body.minimal .topbar:hover, body.minimal .topbar:focus-within{opacity:1}
+body.minimal .dial-wrap{width:max(240px, min(94vw, calc(100vh - var(--other, 330px)), 1100px))}
+/* visibility, not opacity: the .swap animation fills forwards with opacity:1 and would win */
+body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:hidden}
+@media (max-width:640px){ body.minimal .app{padding-top:54px} }
+
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
@@ -260,6 +270,9 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-r
       </button>
       <button class="btn" id="addTimerBtn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Timer</span>
+      </button>
+      <button class="icon-btn" id="minBtn" type="button" aria-label="Minimal display" title="Minimal display (M)" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
       </button>
       <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -361,6 +374,8 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-r
       <label class="switch"><span>Smooth seconds</span><input type="checkbox" id="smooth"><i></i></label>
       <label class="switch"><span>Seconds digits</span><input type="checkbox" id="secDigits"><i></i></label>
       <p class="hint">Turn off to hide the ticking seconds in the clock, cards and timers. The seconds ring keeps moving.</p>
+      <label class="switch"><span>Minimal display</span><input type="checkbox" id="minimal"><i></i></label>
+      <p class="hint">Shows only the rings and the clock. Press M or use the corner button to toggle.</p>
     </section>
     <section>
       <h3>Layout</h3>

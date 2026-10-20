@@ -58,6 +58,7 @@ That is all. Your settings are saved in the browser (`localStorage`). To use it 
 | **Looks** | Light, dark or auto theme. Heat, light-spectrum and viridis palettes. A color-blind-safe (Okabe–Ito) mode. Smooth animation, hover highlight. |
 | **Presets** | Default, Minimal, Clock, Life and Everything. |
 | **Hide seconds digits** | Keep the seconds ring but remove the ticking numbers from the whole page. |
+| **Minimal display** | Show only the rings and the clock: the header, bookmarks, legend and cards go, the dial grows, and the ring labels and markers are dropped. Toggle with the corner icon, the `M` key or settings. |
 
 ## Install as a Chrome new-tab extension
 
@@ -96,6 +97,7 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 - **Drag a card** to reorder the rings.
 - **Gear icon** opens settings: birthdate, presets, palette, markers, meaning colors, briefing, shortcuts.
 - **Half-circle icon** switches theme. **Eye icon** toggles color-blind-friendly colors.
+- **Corner-brackets icon** (or the `M` key) toggles the minimal display. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, so timers can't be paused or removed until you switch it off. Ring names stay visible if color-blind mode is on.
 - **+ Timer** adds a timer (duration or until a clock time, with a label and a color).
 
 ![New user default view](docs/screenshots/new-user.png)
@@ -230,6 +232,7 @@ Site icons come from Chrome's local favicon cache. `chrome://` links and `javasc
 | 12-hour clock | Off |
 | Week starts on | Sunday |
 | Seconds digits | Shown |
+| Minimal display | Off |
 | Shortcuts | Bookmarks bar |
 | Meaning colors | On for week, day, hour, month, age |
 | Daily briefing | On |

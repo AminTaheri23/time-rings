@@ -160,6 +160,7 @@ const DEFAULTS = {
   style: 'arcs', start: 'bottom', hour12: false, weekStart: 0,
   ringOrder: ORDERS.slowOut.slice(), // outside → inside; holds ring ids and timer keys ('t:<id>')
   secDigits: true, shortcuts: 'bar',
+  minimal: false, // only the dial and the clock
   brief: true, lastBrief: '', // daily briefing on/off, and the local date it last played
   meaning: { week: true, day: true, hour: true, month: true, age: true }, // color rings by meaning
   mcol: {},             // custom meaning colors, e.g. { weekend: '#ff0000' }; empty = defaults
@@ -193,6 +194,7 @@ function load() {
   normOrder(out);
   if (!['off','bar','top'].includes(out.shortcuts)) out.shortcuts = DEFAULTS.shortcuts;
   out.secDigits = out.secDigits !== false;
+  out.minimal = out.minimal === true;
   const okNum = (v, m) => typeof v === 'number' && isFinite(v) && Math.abs(v) <= m;
   if (!okNum(out.lat, 90) || !okNum(out.lon, 180)) { out.lat = null; out.lon = null; }
   if (!PALETTES[out.palette]) out.palette = DEFAULTS.palette;
@@ -316,6 +318,7 @@ function adapt(hex) { // keep ring colors readable on the current background
   return c;
 }
 const pal = () => S.colorblind ? CB : (PALETTES[S.palette] || PALETTES.heat);
+function applyMinimal() { document.body.classList.toggle('minimal', !!S.minimal); }
 function applyTheme() {
   const root = document.documentElement;
   if (S.theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', S.theme);
@@ -841,7 +844,7 @@ function drawPaintArc(pt, r, th, p) {
 }
 function drawTicks(k, sp, r, th, p, cAt, arcs) {
   const u = sp.units;
-  if (!u) return;
+  if (!u || (S.minimal && !sp.discrete)) return; // minimal: no tick marks, but day/month gaps are part of the shape
   if (sp.discrete) { // cut real gaps between days / months
     ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = '#000';
     ctx.lineWidth = clamp(th * 0.09, 1, 2.4); ctx.beginPath();
@@ -872,7 +875,8 @@ function drawTicks(k, sp, r, th, p, cAt, arcs) {
   }
 }
 function drawLabels(sp, r, th, p, cAt, arcs) {
-  const showNames = S.labels || S.colorblind;
+  const lab = S.labels && !S.minimal; // tick labels; minimal display drops them (ring names stay in color-blind mode)
+  const showNames = lab || S.colorblind;
   if (!showNames) return;
   const fs = Math.min(13, th * 0.5);
   if (fs < 6) return;
@@ -884,10 +888,10 @@ function drawLabels(sp, r, th, p, cAt, arcs) {
   const nw = sp.short ? ctx.measureText(sp.short).width : 0;
   ctx.font = fontL;
   const zero = sp.labels.length && sp.labels[0].f === 0 ? sp.labels[0] : null;
-  const zw = (S.labels && zero) ? ctx.measureText(zero.t).width : 0;
+  const zw = (lab && zero) ? ctx.measureText(zero.t).width : 0;
   const nameF = 1 - (zw / 2 + nw / 2 + fs * 0.75) / circ;      // ring name sits just before zero
   const nameStart = nameF - (nw / 2 + fs * 0.5) / circ;
-  if (S.labels && sp.labels.some(l => l.pri != null)) { // priority placement: higher pri first, skip overlaps
+  if (lab && sp.labels.some(l => l.pri != null)) { // priority placement: higher pri first, skip overlaps
     const pad = fs * 0.5 / circ, placed = [];
     if (showNames && sp.short) placed.push([nameStart - pad, nameF + nw / 2 / circ]);
     const hit = (a, b) => placed.some(([x, y]) => [0, 1, -1].some(s => a + s < y && b + s > x));
@@ -904,7 +908,7 @@ function drawLabels(sp, r, th, p, cAt, arcs) {
       ctx.fillStyle = (arcs && l.f <= p) ? on(l.f) : off;
       textOnRing(txt, ang(l.f), r);
     }
-  } else if (S.labels && sp.labels.length) {
+  } else if (lab && sp.labels.length) {
     const L = sp.labels, n = L.length;
     let maxW = 0; for (const l of L) maxW = Math.max(maxW, ctx.measureText(l.t).width);
     const crowded = (wd, cnt) => cnt * (wd + fs * 1.1) > circ;
@@ -989,9 +993,8 @@ function drawRing(k, T, now) {
   if (arcs) { if (pt) drawPaintArc(pt, r, th, p); else drawArc(r, th, p, c); }
   else drawDot(r, th, p, c);
   drawTicks(k, sp, r, th, p, cAt, arcs);
-  drawLabels(sp, r, th, p, cAt, arcs);
-  drawBandEdges(sp, r, th);
-  drawPoints(sp, r, th);
+  if (!S.minimal || S.colorblind) drawLabels(sp, r, th, p, cAt, arcs); // color-blind mode keeps the ring names
+  if (!S.minimal) { drawBandEdges(sp, r, th); drawPoints(sp, r, th); }
   if (hover && hover.key === k && hover.f != null && sp.units) {
     const u = sp.units, i = clamp(Math.floor(hover.f * u), 0, u - 1);
     ctx.lineCap = 'butt'; ctx.lineWidth = th + 5; ctx.strokeStyle = rgba(FG, isDark ? 0.24 : 0.16);
@@ -1125,6 +1128,7 @@ function updateCenter(T, now) {
   if (mode !== centerMode) {
     centerMode = mode;
     centerEl.classList.remove('swap'); void centerEl.offsetWidth; centerEl.classList.add('swap');
+    centerEl.classList.toggle('idle', mode === 'clock'); // minimal display hides the date and day/week line while idle
   }
   if (cLabel.dataset.c !== color) { cLabel.dataset.c = color; cLabel.style.color = color; }
   setText(cLabel, label); setText(cSub, sub);
@@ -1452,7 +1456,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawer.c
 
 const parseVal = (v) => v === 'true' ? true : v === 'false' ? false : /^\d+$/.test(v) ? +v : v;
 function changed(opts) {
-  save(); bump(); applyTheme(); parseMS(); relayout();
+  save(); bump(); applyTheme(); applyMinimal(); parseMS(); relayout();
   if (opts && opts.cards) rebuildCards(); else refreshCards();
   if (S.shortcuts !== SC.mode) renderShortcuts();
   syncUI();
@@ -1539,7 +1543,7 @@ function buildSettings() {
     S.ringOrder = ORDERS[e.target.value].concat(S.ringOrder.filter(k => !(k in RINGS)));
     changed({ cards: true });
   });
-  for (const id of ['colorblind', 'labels', 'smooth', 'secDigits']) $('#' + id).addEventListener('change', (e) => { S[id] = e.target.checked; changed(); });
+  for (const id of ['colorblind', 'labels', 'smooth', 'secDigits', 'minimal']) $('#' + id).addEventListener('change', (e) => { S[id] = e.target.checked; changed(); });
   $('#briefOn').addEventListener('change', (e) => { S.brief = e.target.checked; changed(); });
   $('#briefPlay').addEventListener('click', () => { closeDrawer(); setTimeout(() => { if (!startBrief()) window.alert('Turn on at least one of Age, Month, Day of month, Day of week or Hours to get a briefing.'); }, 380); });
   $('#birthdate').addEventListener('change', (e) => { S.birthdate = e.target.value; changed(); });
@@ -1602,6 +1606,8 @@ function syncUI() {
   if (document.activeElement !== $('#birthdate')) $('#birthdate').value = S.birthdate || '';
   if (document.activeElement !== $('#milestones')) $('#milestones').value = S.milestones || '';
   $('#cbBtn').setAttribute('aria-pressed', String(S.colorblind));
+  $('#minBtn').setAttribute('aria-pressed', String(S.minimal));
+  $('#minimal').checked = S.minimal;
   const icons = {
     auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
     light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
@@ -1619,6 +1625,7 @@ function syncUI() {
 /* ---------- top bar + onboarding ---------- */
 $('#themeBtn').addEventListener('click', () => { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; changed(); });
 $('#cbBtn').addEventListener('click', () => { S.colorblind = !S.colorblind; changed(); });
+$('#minBtn').addEventListener('click', () => { S.minimal = !S.minimal; changed(); });
 $('#addTimerBtn').addEventListener('click', openTimerDlg);
 $('#legend').addEventListener('click', () => { // cycle Heat → Spectrum → Viridis → color-blind → Heat
   const ids = Object.keys(PALETTES);
@@ -1632,7 +1639,7 @@ darkMQ.addEventListener('change', () => { if (S.theme === 'auto') changed(); });
 // another tab saved: pick up its settings and timers live
 window.addEventListener('storage', (e) => {
   if (e.key !== STORE || dirty) return;
-  S = load(); bump(); applyTheme(); parseMS(); relayout(); rebuildCards(); syncUI();
+  S = load(); bump(); applyTheme(); applyMinimal(); parseMS(); relayout(); rebuildCards(); syncUI();
   if (S.shortcuts !== SC.mode) renderShortcuts();
 });
 
@@ -1795,6 +1802,9 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { endBrief(); e.preventDefault(); }
     else if (e.key === 'ArrowRight' || ((e.key === ' ' || e.key === 'Enter') && !onButton)) { goBrief(BRIEF.i + 1); e.preventDefault(); }
     else if (e.key === 'ArrowLeft') { goBrief(BRIEF.i - 1); e.preventDefault(); }
+  } else if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open
+      && !(e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) {
+    S.minimal = !S.minimal; changed(); // M toggles the minimal display
   }
   dismissAlarm(); ensureAudio(); clearTitle();
 });
@@ -1972,6 +1982,7 @@ function loop(tp) {
 /* ---------- boot ---------- */
 parseMS();
 applyTheme();
+applyMinimal();
 buildSettings();
 rebuildCards();
 syncUI();
