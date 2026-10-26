@@ -121,6 +121,11 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .card.off .val{color:var(--muted)}
 .card.off .bar i{background:var(--muted);opacity:.4}
 .card.off .dot{background:transparent;box-shadow:inset 0 0 0 1.6px var(--c)}
+.card .tb{width:22px;height:22px;margin:-6px -5px -6px 0;padding:0;border:0;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:color .2s,background-color .2s}
+.card .tb:hover{color:var(--fg);background:var(--panel2)}
+.card .tb[aria-pressed="true"]{color:var(--c)}
+.card .tb svg{width:15px;height:15px}
+.readout .card.tmr{min-width:176px}
 .card .val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .sub{font-size:12px;color:var(--muted);margin-top:2px;min-height:1.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar{height:5px;border-radius:3px;background:var(--ct);margin-top:9px;overflow:hidden}
@@ -440,6 +445,7 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
     <div id="tUntilBox" hidden>
       <label class="field"><span>Date and time</span><input type="datetime-local" id="tUntil"></label>
     </div>
+    <div class="row"><span>Show as</span><div class="seg" id="tShape"><button type="button" data-v="ring">Ring</button><button type="button" data-v="disc">Disc</button></div></div>
     <div class="row"><span>Color</span><div class="swatches" id="tSwatches"></div></div>
     <p class="err" id="tErr"></p>
     <div class="dlg-actions">
