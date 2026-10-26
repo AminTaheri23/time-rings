@@ -187,7 +187,7 @@ function load() {
     markers: Object.assign({}, d.markers, s.markers),
     meaning: Object.assign({}, d.meaning, s.meaning),
     mcol: (s.mcol && typeof s.mcol === 'object') ? Object.fromEntries(Object.entries(s.mcol).filter(([k, v]) => k in MC_KEYS && /^#[0-9a-f]{6}$/i.test(v))) : {},
-    timers: Array.isArray(s.timers) ? s.timers.filter(t => t && t.id && t.total > 0) : [],
+    timers: Array.isArray(s.timers) ? s.timers.filter(t => t && t.id && t.total > 0 && (t.type !== 'daily' || (Array.isArray(t.days) && t.days.length))) : [],
   });
   if (!Array.isArray(s.ringOrder)) out.ringOrder = (ORDERS[s.order] || ORDERS.slowOut).slice(); // migrate the old preset-only order
   delete out.order;
@@ -407,22 +407,52 @@ function ringColorNow(k) { // what a ring's card, dot and labels use: the color 
   return p && CUR[k] ? paintAt(p, clamp(CUR[k].p, 0, 0.9999)) : colorOf(k);
 }
 
-/* ---------- timers ---------- */
+/* ---------- timers (and custom rings, which live in the same list) ---------- */
 const ghosts = {}; // removed timers kept briefly so their ring can fade out
 const timerByKey = (k) => S.timers.find(t => 't:' + t.id === k) || ghosts[k] || null;
 const colorOf = (k) => RC[k] || (timerByKey(k) ? adapt(timerByKey(k).color) : FG);
+const isRingT = (t) => !!t && (t.type === 'daily' || t.type === 'span'); // custom ring: every day in a time window, or once between two dates
+const tName = (t) => t.label || (isRingT(t) ? 'Ring' : 'Timer');
 const tRemain = (t, now) => t.running ? Math.max(0, t.endAt - now) : Math.max(0, t.remaining || 0);
+function fmtWhen(ms, now) { // "14:30" today, "Mon 14:30" later this week, else "Oct 3, 14:30"
+  const e = new Date(ms), n = new Date(now);
+  const days = Math.round((new Date(e.getFullYear(), e.getMonth(), e.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5);
+  if (days === 0) return fmtClock(e);
+  if (days > 0 && days < 7) return `${DAY3[e.getDay()]} ${fmtClock(e)}`;
+  return `${MON3[e.getMonth()]} ${e.getDate()}, ${fmtClock(e)}`;
+}
 function timerInfo(t, now) {
+  if (isRingT(t)) return ringInfo(t, now);
   const rem = tRemain(t, now);
   const p = t.total > 0 ? rem / t.total : 0;
   let sub;
   if (t.done) sub = 'Finished';
   else if (!t.running) sub = 'Paused';
-  else {
-    const e = new Date(t.endAt);
-    sub = 'Ends ' + (e.toDateString() === new Date(now).toDateString() ? fmtClock(e) : `${MON3[e.getMonth()]} ${e.getDate()}, ${fmtClock(e)}`);
-  }
+  else sub = 'Ends ' + fmtWhen(t.endAt, now);
   return { p: t.done ? 1 : p, main: t.done ? 'Done' : fmtTimer(rem), sub, pct: t.done ? '✓' : Math.floor(p * 100) + '%' };
+}
+const occAt = (t, b, i) => { // start of a daily ring's window i days from b, or null when that weekday is off
+  const d = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i, Math.floor(t.from / 60), t.from % 60);
+  return t.days.includes(d.getDay()) ? d.getTime() : null;
+};
+function ringInfo(t, now) { // custom rings fill up as their window passes, like the built-in rings
+  let s0 = null, e0 = null, next = null; // the current or last window, and the next start
+  if (t.type === 'span') { s0 = t.start; e0 = t.endAt; }
+  else {
+    const b = new Date(now);
+    for (let i = 0; i >= -7 && s0 == null; i--) { const s = occAt(t, b, i); if (s != null && s <= now) s0 = s; }
+    for (let i = 0; i <= 8 && next == null; i++) { const s = occAt(t, b, i); if (s != null && s > now) next = s; }
+    if (s0 != null) e0 = s0 + t.dur * 60000;
+  }
+  if (s0 != null && now >= s0 && now < e0) {
+    const p = (now - s0) / (e0 - s0);
+    return { p, main: fmtTimer(e0 - now), sub: 'Ends ' + fmtWhen(e0, now), pct: Math.floor(p * 100) + '%' };
+  }
+  // a daily window stays full for the rest of the day it ended, then empties until it starts again
+  if (s0 != null && now >= e0 && (t.type === 'span' || new Date(e0).toDateString() === new Date(now).toDateString()))
+    return { p: 1, main: 'Done', sub: next != null ? 'Next ' + fmtWhen(next, now) : 'Ended ' + fmtWhen(e0, now), pct: '✓' };
+  const st = t.type === 'span' ? s0 : next;
+  return { p: 0, main: 'in ' + fmtTimer(st - now), sub: 'Starts ' + fmtWhen(st, now), pct: '0%' };
 }
 
 /* ---------- audio + title alerts ---------- */
@@ -723,9 +753,11 @@ const vis = {}; // animated state per ring key
 let activeSet = new Set();
 let hover = null, hoverAmt = 0;
 function activeKeys() { // rings drawn on the dial, outside → inside, in the user's order
-  const live = new Set(S.timers.filter(t => !t.hidden).slice(0, MAX_TIMER_RINGS).map(t => 't:' + t.id));
+  const shown = S.timers.filter(t => !t.hidden); // custom rings don't count toward the timer limit
+  const live = new Set(shown.filter(isRingT).concat(shown.filter(t => !isRingT(t)).slice(0, MAX_TIMER_RINGS)).map(t => 't:' + t.id));
   return S.ringOrder.filter(k => k in RINGS ? !!S.rings[k] : live.has(k));
 }
+const bigRing = (k) => k in RINGS || isRingT(timerByKey(k)); // full ring width; timers are thinner
 const targetStart = () => S.start === 'top' ? -Math.PI / 2 : Math.PI / 2;
 let startA = targetStart();
 const ang = (f) => startA + f * TAU;
@@ -745,14 +777,14 @@ function relayout() {
   activeSet = new Set(keys);
   const R0 = size / 2 - Math.max(5, size * 0.012);
   const minC = size * (size < 520 ? 0.16 : 0.2);
-  const w = keys.map(k => (k in RINGS ? 1 : 0.6));
+  const w = keys.map(k => (bigRing(k) ? 1 : 0.6));
   const W = w.reduce((a, b) => a + b, 0);
   const unit = W ? Math.min(size * 0.068, (R0 - minC) / W) : 0;
   const tp = performance.now();
   let r = R0;
   keys.forEach((k, i) => {
     const slot = unit * w[i];
-    const tr = r - slot / 2, tth = slot * (k in RINGS ? 0.76 : 0.64);
+    const tr = r - slot / 2, tth = slot * (bigRing(k) ? 0.76 : 0.64);
     let v = vis[k];
     if (!v) v = vis[k] = { r: tr, th: 0, a: 0, hl: 0, disp: 0, flash: 0, born: tp + (firstLayout ? i * 90 : 0) };
     v.tr = tr; v.tth = tth; v.ta = 1; v.slot = slot;
@@ -972,8 +1004,8 @@ function drawRing(k, T, now) {
   const isMain = k in RINGS;
   const t = isMain ? null : timerByKey(k);
   if (!isMain && !t) return;
-  const sp = isMain ? spec(k, T) : { units: 0, labels: [], bands: [], points: [], short: (t.label || 'Timer').toUpperCase().slice(0, 14) };
-  const arcs = S.style === 'arcs' || !isMain;
+  const sp = isMain ? spec(k, T) : { units: 0, labels: t.type === 'daily' ? [{ f: 0, t: fmtHour(t.from / 60) }] : [], bands: [], points: [], short: tName(t).toUpperCase().slice(0, 14) };
+  const arcs = S.style === 'arcs' || !(isMain || isRingT(t)); // custom rings follow the ring style; timers are always arcs
   const hl = v.hl;
   const th = v.th * (1 + 0.12 * hl), r = v.r, p = clamp(v.disp, 0, 1);
   const pt = isMain ? paint(k, T) : null;                 // meaning colors, if on for this ring
@@ -1118,7 +1150,7 @@ function updateCenter(T, now) {
       main = x.main; sub = x.sub;
     } else {
       const t = timerByKey(hk), x = timerInfo(t, now);
-      label = t.label || 'Timer'; main = x.main; sub = x.sub;
+      label = tName(t); main = x.main; sub = x.sub;
     }
   } else {
     label = `${DAY3[T.dow]} · ${MON3[T.mo]} ${T.dt}`;
@@ -1143,6 +1175,7 @@ function updateCenter(T, now) {
 const readoutEl = $('#readout');
 let cards = [];
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const RING_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8" opacity=".35"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>';
 function setHover(h) {
   const prev = hover && hover.key;
   hover = h;
@@ -1156,7 +1189,8 @@ function renderCtl(card) {
   const t = card.t;
   const b = (act, label, aria) => `<button type="button" data-act="${act}" data-id="${t.id}" aria-label="${aria || label}">${label}</button>`;
   let h;
-  if (t.done) h = (t.type === 'duration' ? b('restart', 'Restart') : '') + b('del', 'Remove');
+  if (isRingT(t)) h = b('edit', 'Edit', `Edit ${tName(t)}`) + b('del', 'Remove', `Remove ${tName(t)}`);
+  else if (t.done) h =(t.type === 'duration' ? b('restart', 'Restart') : '') + b('del', 'Remove');
   else if (t.type === 'duration') h = b('toggle', t.running ? 'Pause' : 'Resume') + b('reset', 'Reset') + b('del', '✕', 'Remove timer');
   else h = b('del', 'Remove');
   card.ctl.innerHTML = h;
@@ -1215,13 +1249,17 @@ function rebuildCards() {
   let i = 0;
   for (const k of S.ringOrder) { // same order as the rings; hidden rings keep a card so they can be switched back on
     if (k in RINGS) addCard(k, RINGS[k].name, null, i++);
-    else { const t = S.timers.find(x => 't:' + x.id === k); if (t) addCard(k, t.label || 'Timer', t, i++); }
+    else { const t = S.timers.find(x => 't:' + x.id === k); if (t) addCard(k, tName(t), t, i++); }
   }
   const add = document.createElement('button');
   add.type = 'button'; add.className = 'card add'; add.style.animationDelay = (i * 30) + 'ms';
   add.innerHTML = PLUS + '<span>Add timer</span>';
   add.addEventListener('click', openTimerDlg);
-  readoutEl.appendChild(add);
+  const addR = document.createElement('button');
+  addR.type = 'button'; addR.className = 'card add'; addR.style.animationDelay = (i * 30 + 30) + 'ms';
+  addR.innerHTML = RING_ICON + '<span>Add ring</span>';
+  addR.addEventListener('click', () => openRingDlg());
+  readoutEl.append(add, addR);
   paintCards();
   const h = hover; hover = null; setHover(h && (activeSet.has(h.key) ? h : null));
 }
@@ -1245,6 +1283,7 @@ readoutEl.addEventListener('click', (e) => {
   if (!t) return;
   const now = Date.now();
   switch (b.dataset.act) {
+    case 'edit': openRingDlg(t); return;
     case 'toggle':
       if (t.running) { t.remaining = Math.max(0, t.endAt - now); t.endAt = null; t.running = false; }
       else { t.endAt = now + t.remaining; t.running = true; }
@@ -1396,13 +1435,13 @@ function setTType(v) {
   for (const b of $('#tType').children) b.classList.toggle('on', b.dataset.v === v);
   $('#tDurBox').hidden = v !== 'duration'; $('#tUntilBox').hidden = v !== 'until';
 }
-function renderSwatches() {
-  const box = $('#tSwatches'); box.textContent = '';
+function renderSwatches(sel) { // shared by the timer and ring dialogs (only one is open at a time)
+  const box = $(sel); box.textContent = '';
   for (const c of timerPalette()) {
     const b = document.createElement('button');
     b.type = 'button'; b.style.setProperty('--c', c); b.setAttribute('aria-label', 'Color ' + c);
     b.classList.toggle('on', c === tColor);
-    b.addEventListener('click', () => { tColor = c; renderSwatches(); });
+    b.addEventListener('click', () => { tColor = c; renderSwatches(sel); });
     box.appendChild(b);
   }
   const custom = document.createElement('input');
@@ -1416,7 +1455,7 @@ function openTimerDlg() {
   setTType('duration');
   const d = new Date(Date.now() + 864e5); d.setSeconds(0, 0);
   $('#tUntil').value = toLocalInput(d);
-  tColor = nextTimerColor(); renderSwatches();
+  tColor = nextTimerColor(); renderSwatches('#tSwatches');
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
   setTimeout(() => $('#tLabel').focus(), 60);
 }
@@ -1442,6 +1481,109 @@ $('#timerForm').addEventListener('submit', (e) => {
     t = { id: uid(), label, color: tColor, type: 'until', total: target - now, endAt: target, remaining: target - now, running: true, done: false };
   }
   S.timers.push(t); save(); timersChanged(); closeDlg();
+});
+
+/* ---------- custom ring dialog ---------- */
+const rdlg = $('#ringDlg');
+let rRepeat = 'daily', rEnds = 'end', rEditId = null, rDays = new Set();
+const segPick = (box, v) => { for (const b of box.children) b.classList.toggle('on', b.dataset.v === v); };
+const timeMin = (v) => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ''); return m ? +m[1] * 60 + +m[2] : NaN; };
+const minTime = (n) => `${pad(Math.floor(n / 60) % 24)}:${pad(n % 60)}`;
+function readRing() { // the dialog's fields → ring fields, or an error message
+  const num = (id) => Math.max(0, Math.floor(+$(id).value || 0));
+  if (rRepeat === 'daily') {
+    const from = timeMin($('#rFrom').value);
+    if (isNaN(from)) return 'Pick a start time.';
+    let dur;
+    if (rEnds === 'end') {
+      const to = timeMin($('#rTo').value);
+      if (isNaN(to)) return 'Pick an end time.';
+      if (to === from) return 'The end time has to differ from the start.';
+      dur = (to - from + 1440) % 1440; // an end before the start runs past midnight
+    } else {
+      dur = num('#rH') * 60 + num('#rM');
+      if (!(dur > 0)) return 'Set a duration longer than zero.';
+      if (dur > 1440) return 'A daily ring can last 24 hours at most.';
+    }
+    if (!rDays.size) return 'Pick at least one day.';
+    return { type: 'daily', from, dur, days: [...rDays].sort(), total: dur * 60000 };
+  }
+  const when = (id) => $(id).value ? new Date($(id).value).getTime() : NaN;
+  const start = when('#rStart');
+  if (!isFinite(start)) return 'Pick a start date and time.';
+  const end = rEnds === 'end' ? when('#rEnd') : start + (num('#rD') * 1440 + num('#rH') * 60 + num('#rM')) * 60000;
+  if (!isFinite(end)) return 'Pick an end date and time.';
+  if (!(end > start)) return rEnds === 'end' ? 'The end has to be after the start.' : 'Set a duration longer than zero.';
+  return { type: 'span', start, endAt: end, total: end - start };
+}
+function rNote() { // live summary: "Weekdays · 8 h 00 m", "Overnight · every day · 8 h 00 m"
+  const r = readRing(), el = $('#rNote');
+  if (typeof r === 'string') { el.textContent = ''; return; }
+  if (r.type === 'span') { el.textContent = `Lasts ${fmtDurCalm(r.total)}.`; return; }
+  const d = r.days.join();
+  const wk = (x) => (x - S.weekStart + 7) % 7;
+  const days = d === '0,1,2,3,4,5,6' ? 'Every day' : d === '1,2,3,4,5' ? 'Weekdays' : d === '0,6' ? 'Weekends' : r.days.slice().sort((a, b) => wk(a) - wk(b)).map(x => DAY3[x]).join(', ');
+  el.textContent = `${days}, ${fmtHour(r.from / 60)} to ${fmtHour((r.from + r.dur) / 60)}${r.from + r.dur > 1440 ? ' (overnight)' : ''} · ${fmtSpan(r.dur / 60)}.`;
+}
+function setRMode() {
+  segPick($('#rRepeat'), rRepeat); segPick($('#rEnds'), rEnds);
+  const daily = rRepeat === 'daily';
+  $('#rFrom').hidden = !daily; $('#rStart').hidden = daily;
+  $('#rTo').hidden = !daily; $('#rEnd').hidden = daily;
+  $('#rEndBox').hidden = rEnds !== 'end'; $('#rDurBox').hidden = rEnds !== 'dur';
+  $('#rDLab').hidden = daily; $('#rDaysBox').hidden = !daily;
+  $('#rErr').textContent = '';
+  rNote();
+}
+function renderDays() {
+  const box = $('#rDays'); box.textContent = '';
+  for (let i = 0; i < 7; i++) {
+    const d = (i + S.weekStart) % 7, on = rDays.has(d), b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = DAY3[d];
+    b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', DAY[d]);
+    b.addEventListener('click', () => { if (on) rDays.delete(d); else rDays.add(d); renderDays(); rNote(); });
+    box.appendChild(b);
+  }
+}
+function openRingDlg(t) { // t = a ring to edit; nothing = a new one
+  t = t && isRingT(t) ? t : null;
+  rEditId = t ? t.id : null;
+  $('#rTitle').textContent = t ? 'Edit ring' : 'New ring';
+  $('#rSave').textContent = t ? 'Save' : 'Add ring';
+  $('#rLabel').value = t ? (t.label || '') : '';
+  rRepeat = t ? t.type : 'daily'; rEnds = 'end';
+  const daily = t && t.type === 'daily', span = t && t.type === 'span';
+  $('#rFrom').value = minTime(daily ? t.from : 9 * 60);
+  $('#rTo').value = minTime(daily ? (t.from + t.dur) % 1440 : 17 * 60);
+  const now = new Date(); now.setSeconds(0, 0);
+  $('#rStart').value = toLocalInput(span ? new Date(t.start) : now);
+  $('#rEnd').value = toLocalInput(span ? new Date(t.endAt) : new Date(now.getTime() + 864e5));
+  const m = t ? Math.round(t.total / 60000) : 60;
+  $('#rD').value = span ? Math.floor(m / 1440) : 0;
+  $('#rH').value = span ? Math.floor(m % 1440 / 60) : Math.floor(m / 60);
+  $('#rM').value = m % 60;
+  rDays = new Set(daily ? t.days : [0, 1, 2, 3, 4, 5, 6]);
+  tColor = t ? t.color : nextTimerColor();
+  renderDays(); renderSwatches('#rSwatches'); setRMode();
+  if (typeof rdlg.showModal === 'function') rdlg.showModal(); else rdlg.setAttribute('open', '');
+  setTimeout(() => $('#rLabel').focus(), 60);
+}
+function closeRDlg() { if (typeof rdlg.close === 'function') rdlg.close(); else rdlg.removeAttribute('open'); }
+for (const b of $('#rRepeat').children) b.addEventListener('click', () => { rRepeat = b.dataset.v; setRMode(); });
+for (const b of $('#rEnds').children) b.addEventListener('click', () => { rEnds = b.dataset.v; setRMode(); });
+$('#ringForm').addEventListener('input', () => { $('#rErr').textContent = ''; rNote(); });
+$('#rCancel').addEventListener('click', closeRDlg);
+$('#ringForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const r = readRing();
+  if (typeof r === 'string') { $('#rErr').textContent = r; return; }
+  const label = $('#rLabel').value.trim() || 'Ring';
+  const cur = rEditId && S.timers.find(x => x.id === rEditId);
+  if (cur) {
+    for (const k of ['from', 'dur', 'days', 'start', 'endAt']) delete cur[k];
+    Object.assign(cur, r, { label, color: tColor });
+  } else S.timers.push(Object.assign({ id: uid(), label, color: tColor }, r));
+  save(); timersChanged(); closeRDlg();
 });
 
 /* ---------- settings drawer ---------- */
@@ -1514,6 +1656,7 @@ function buildSettings() {
   $('#lat').addEventListener('change', setLoc); $('#lon').addEventListener('change', setLoc);
   $('#locAuto').addEventListener('click', () => { S.lat = null; S.lon = null; $('#lat').value = ''; $('#lon').value = ''; changed(); });
   $('#mcReset').addEventListener('click', () => { S.mcol = {}; changed(); });
+  $('#addRingSet').addEventListener('click', () => { closeDrawer(); openRingDlg(); });
   const ml = $('#markerList');
   for (const m of MARKERS) {
     const row = document.createElement('label');
@@ -1549,7 +1692,7 @@ function buildSettings() {
   $('#birthdate').addEventListener('change', (e) => { S.birthdate = e.target.value; changed(); });
   $('#milestones').addEventListener('change', (e) => { S.milestones = e.target.value; changed(); });
   $('#resetAll').addEventListener('click', () => {
-    if (!window.confirm('Reset all settings, your birthdate and timers?')) return;
+    if (!window.confirm('Reset all settings, your birthdate, timers and custom rings?')) return;
     S = clone(DEFAULTS); normOrder(S); clearTitle(); changed({ cards: true });
   });
 }
@@ -1802,7 +1945,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { endBrief(); e.preventDefault(); }
     else if (e.key === 'ArrowRight' || ((e.key === ' ' || e.key === 'Enter') && !onButton)) { goBrief(BRIEF.i + 1); e.preventDefault(); }
     else if (e.key === 'ArrowLeft') { goBrief(BRIEF.i - 1); e.preventDefault(); }
-  } else if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open
+  } else if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open && !rdlg.open
       && !(e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) {
     S.minimal = !S.minimal; changed(); // M toggles the minimal display
   }

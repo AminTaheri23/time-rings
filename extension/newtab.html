@@ -182,7 +182,7 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .h3note{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px}
 .field{display:flex;flex-direction:column;gap:5px;font-size:13px;margin-bottom:10px}
 .field > span{color:var(--muted);font-weight:600}
-input[type=text],input[type=date],input[type=number],input[type=datetime-local],select{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);padding:0 10px;outline:none;min-width:0;transition:border-color .2s, box-shadow .2s}
+input[type=text],input[type=date],input[type=number],input[type=datetime-local],input[type=time],select{height:38px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);padding:0 10px;outline:none;min-width:0;transition:border-color .2s, box-shadow .2s}
 input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
 select{cursor:pointer}
 select:disabled{opacity:.5;cursor:not-allowed}
@@ -234,6 +234,8 @@ dialog h2{font-size:17px;margin:0 0 12px}
 .swatches button:hover{transform:scale(1.12)}
 .swatches button.on{box-shadow:0 0 0 2px var(--fg)}
 input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);padding:2px;cursor:pointer}
+.days{gap:4px}
+.days .chip{flex:1;min-width:38px;padding:6px 0;text-align:center}
 .err{color:var(--danger);font-size:12.5px;min-height:1.1em;margin:6px 0 0}
 .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 
@@ -345,6 +347,8 @@ body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:
     <section>
       <h3>Rings <span class="h3note">color = how fast it cycles</span></h3>
       <div class="list" id="ringList"></div>
+      <button class="btn ghost" id="addRingSet" type="button">＋ Custom ring</button>
+      <p class="hint">Your own time windows, like work hours every weekday or a trip next month. Each one gets a card under the dial.</p>
     </section>
     <section>
       <h3>Meaning colors <span class="h3note">color shows what the time means</span></h3>
@@ -405,7 +409,7 @@ body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:
     </section>
     <section class="last">
       <button class="btn danger" id="resetAll" type="button">Reset everything</button>
-      <p class="hint">Settings, birthdate and timers are stored only in this browser (localStorage).</p>
+      <p class="hint">Settings, birthdate, timers and custom rings are stored only in this browser (localStorage).</p>
     </section>
   </div>
 </aside>
@@ -440,6 +444,36 @@ body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:
     <div class="dlg-actions">
       <button type="button" class="btn ghost" id="tCancel">Cancel</button>
       <button type="submit" class="btn primary">Start</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="ringDlg" aria-labelledby="rTitle">
+  <form id="ringForm" novalidate>
+    <h2 id="rTitle">New ring</h2>
+    <label class="field"><span>Label</span><input type="text" id="rLabel" maxlength="24" placeholder="Work" autocomplete="off"></label>
+    <div class="seg full" id="rRepeat">
+      <button type="button" data-v="daily">Every day</button>
+      <button type="button" data-v="span">Once</button>
+    </div>
+    <div class="field"><span>Starts</span><input type="time" id="rFrom" aria-label="Start time"><input type="datetime-local" id="rStart" aria-label="Start date and time" hidden></div>
+    <div class="seg full" id="rEnds">
+      <button type="button" data-v="end">Ends at</button>
+      <button type="button" data-v="dur">Lasts</button>
+    </div>
+    <div class="field" id="rEndBox"><input type="time" id="rTo" aria-label="End time"><input type="datetime-local" id="rEnd" aria-label="End date and time" hidden></div>
+    <div class="dur" id="rDurBox" hidden>
+      <label id="rDLab"><input type="number" id="rD" min="0" max="999" inputmode="numeric" value="0" aria-label="Days">d</label>
+      <label><input type="number" id="rH" min="0" max="24" inputmode="numeric" value="1" aria-label="Hours">h</label>
+      <label><input type="number" id="rM" min="0" max="59" inputmode="numeric" value="0" aria-label="Minutes">m</label>
+    </div>
+    <div id="rDaysBox"><div class="chips days" id="rDays" role="group" aria-label="Days of the week"></div></div>
+    <p class="hint" id="rNote"></p>
+    <div class="row"><span>Color</span><div class="swatches" id="rSwatches"></div></div>
+    <p class="err" id="rErr"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="rCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="rSave">Add ring</button>
     </div>
   </form>
 </dialog>
