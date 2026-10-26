@@ -1216,6 +1216,7 @@ const readoutEl = $('#readout');
 let cards = [];
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const DISC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 1 1 3.5 12z" fill="currentColor" stroke="none"/></svg>';
+const POP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none"/></svg>';
 const RING_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8" opacity=".35"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>';
 function setHover(h) {
   const prev = hover && hover.key;
@@ -1267,9 +1268,10 @@ function addCard(key, name, t, i) {
   el.className = 'card'; el.dataset.key = key; el.style.animationDelay = (i * 30) + 'ms';
   el.innerHTML = '<div class="top"><button type="button" class="vis"><span class="dot"></span></button><span class="nm"></span><span class="pct"></span></div><div class="val"></div><div class="sub"></div><div class="bar"><i></i></div>' + (t ? '<div class="ctl"></div>' : '');
   el.querySelector('.nm').textContent = name;
-  if (t && !isRingT(t)) { // timers: ring/disc toggle in the top row
-    el.classList.add('tmr');
-    el.querySelector('.top').insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-act="shape" data-id="${t.id}">${DISC_ICON}</button>`);
+  if (t) { // top-row buttons: ring/disc for timers, pop-out for timers and custom rings
+    const tb = (act, icon) => `<button type="button" class="tb" data-act="${act}" data-id="${t.id}">${icon}</button>`;
+    const html = (isRingT(t) ? '' : tb('shape', DISC_ICON)) + (PIP.ok ? tb('pop', POP_ICON) : '');
+    if (html) { el.classList.add('tmr'); el.querySelector('.top').insertAdjacentHTML('beforeend', html); }
   }
   const card = { key, el, t, name, vis: el.querySelector('.vis'), val: el.querySelector('.val'), sub: el.querySelector('.sub'), pct: el.querySelector('.pct'), bar: el.querySelector('.bar i'), ctl: el.querySelector('.ctl') };
   el.addEventListener('mouseenter', () => { if (!drag && !BRIEF.on && activeSet.has(key)) setHover({ key, f: null, src: 'card' }); });
@@ -1280,11 +1282,19 @@ function addCard(key, name, t, i) {
 }
 function setTimerBtns(card) {
   const b = card.el.querySelector('.tb[data-act="shape"]');
-  if (!b) return;
-  const disc = card.t.shape === 'disc';
-  b.setAttribute('aria-pressed', String(disc));
-  b.title = disc ? 'Shown as a disc in the center · click for a ring' : 'Show as a disc in the center';
-  b.setAttribute('aria-label', disc ? `Show ${card.name} as a ring` : `Show ${card.name} as a disc`);
+  if (b) {
+    const disc = card.t.shape === 'disc';
+    b.setAttribute('aria-pressed', String(disc));
+    b.title = disc ? 'Shown as a disc in the center · click for a ring' : 'Show as a disc in the center';
+    b.setAttribute('aria-label', disc ? `Show ${card.name} as a ring` : `Show ${card.name} as a disc`);
+  }
+  const pb = card.el.querySelector('.tb[data-act="pop"]');
+  if (pb) {
+    const on = pipOpen() && PIP.key === card.key;
+    pb.setAttribute('aria-pressed', String(on));
+    pb.title = on ? 'Close the pop-out' : 'Pop out: a small window that floats over your other apps';
+    pb.setAttribute('aria-label', on ? `Close the ${card.name} pop-out` : `Pop out ${card.name}`);
+  }
 }
 function setShape(t, disc) { // only one disc at a time: it fills the center
   for (const o of S.timers) delete o.shape;
@@ -1340,10 +1350,16 @@ readoutEl.addEventListener('click', (e) => {
   }
   const t = S.timers.find(x => x.id === b.dataset.id);
   if (!t) return;
-  const now = Date.now();
   switch (b.dataset.act) {
-    case 'edit': openRingDlg(t); return;
-    case 'shape': setShape(t, t.shape !== 'disc'); return;
+    case 'edit': openRingDlg(t); break;
+    case 'shape': setShape(t, t.shape !== 'disc'); break;
+    case 'pop': togglePip('t:' + t.id); break;
+    default: timerAct(t, b.dataset.act);
+  }
+});
+function timerAct(t, act) { // Pause/Resume, Reset, Restart, Remove, from a card or the pop-out
+  const now = Date.now();
+  switch (act) {
     case 'toggle':
       if (t.running) { t.remaining = Math.max(0, t.endAt - now); t.endAt = null; t.running = false; }
       else { t.endAt = now + t.remaining; t.running = true; }
@@ -1358,13 +1374,14 @@ readoutEl.addEventListener('click', (e) => {
     case 'del':
       ghosts['t:' + t.id] = t;
       S.timers = S.timers.filter(x => x !== t);
+      if (PIP.key === 't:' + t.id) closePip();
       clearTitle(); save(); timersChanged();
       return;
   }
   clearTitle(); save();
   const card = cards.find(c => c.t === t);
   if (card) renderCtl(card);
-});
+}
 function tickTimers(now) {
   for (const t of S.timers) {
     if (t.running && !t.done && t.endAt <= now) {
@@ -1379,6 +1396,145 @@ function tickTimers(now) {
   }
 }
 function timersChanged() { normOrder(S); bump(); relayout(); rebuildCards(); syncUI(); }
+
+/* ---------- pop-out: a timer in a small always-on-top window (picture-in-picture) ---------- */
+// Document PiP (Chrome, Edge) gives a real mini page with buttons; elsewhere a canvas is streamed into a PiP video.
+const PIP = { doc: !!window.documentPictureInPicture, key: null, win: null, video: null, cv: null, g: null, bar: null, raf: 0, iv: 0, last: 0, theme: '', ctl: '' };
+PIP.ok = PIP.doc || !!(document.pictureInPictureEnabled && HTMLCanvasElement.prototype.captureStream);
+const pipOpen = () => !!(PIP.win || PIP.video);
+const pipTimer = () => S.timers.find(x => 't:' + x.id === PIP.key) || null; // looked up each frame: another tab may replace S
+const refreshPipBtns = () => { for (const c of cards) if (c.t) setTimerBtns(c); };
+function togglePip(key) {
+  if (pipOpen() && PIP.key === key) { closePip(); return; }
+  PIP.key = key; PIP.ctl = '';
+  if (pipOpen()) { refreshPipBtns(); return; } // already open: show this one instead
+  ensureAudio(); // so the chime can play while you're in another app
+  (PIP.doc ? openDocPip() : openVideoPip()).catch(() => closePip()); // opening must start inside the click
+}
+function closePip() {
+  const w = PIP.win, v = PIP.video;
+  PIP.win = null; PIP.video = null; PIP.key = null;
+  if (w) { try { w.cancelAnimationFrame(PIP.raf); w.close(); } catch (e) { /* already closed */ } }
+  if (v) {
+    clearInterval(PIP.iv);
+    if (document.pictureInPictureElement === v) document.exitPictureInPicture().catch(() => {});
+    v.srcObject = null; v.remove();
+  }
+  refreshPipBtns();
+}
+async function openDocPip() {
+  const w = await documentPictureInPicture.requestWindow({ width: 240, height: 290 });
+  PIP.win = w; PIP.theme = ''; PIP.last = -1e9;
+  const d = w.document;
+  d.title = 'Time Rings';
+  const st = d.createElement('style');
+  st.textContent = `html,body{margin:0;height:100%;overflow:hidden}
+body{display:flex;flex-direction:column;font-family:${FONT};-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
+canvas{flex:1 1 0;min-height:0;width:100%;display:block}
+.bar{display:flex;gap:6px;justify-content:center;padding:0 10px 10px}
+.bar:empty{display:none}
+button{flex:1;max-width:120px;height:30px;border-radius:9px;border:1px solid var(--bd);background:var(--p2);color:inherit;font:600 13px ${FONT};cursor:pointer}
+button:hover{border-color:var(--mu)}`;
+  d.head.append(st);
+  PIP.cv = d.createElement('canvas'); PIP.g = PIP.cv.getContext('2d');
+  PIP.bar = d.createElement('div'); PIP.bar.className = 'bar';
+  d.body.append(PIP.cv, PIP.bar);
+  PIP.bar.addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'), t = pipTimer(); if (b && t) timerAct(t, b.dataset.act); });
+  let swallow = false; // like the page: the click that stops an alarm does nothing else
+  w.addEventListener('pointerdown', (e) => {
+    ensureAudio();
+    if (alarmOn) { dismissAlarm(); swallow = true; setTimeout(() => { swallow = false; }, 800); e.preventDefault(); }
+  }, true);
+  w.addEventListener('click', (e) => { if (swallow) { swallow = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  w.addEventListener('keydown', dismissAlarm);
+  w.addEventListener('pagehide', () => { if (PIP.win === w) closePip(); }); // closed with its own ✕
+  refreshPipBtns();
+  pipFrame();
+}
+function pipFrame() {
+  const w = PIP.win;
+  if (!w) return;
+  PIP.raf = w.requestAnimationFrame(pipFrame); // the pop-out's own frames keep running while this tab is hidden
+  const tp = performance.now(), now = Date.now();
+  if (tp - PIP.last < 100) return; // ~10 fps is plenty
+  PIP.last = tp;
+  tickTimers(now); // keeps the alarm on time even when the page itself is throttled in the background
+  const t = pipTimer();
+  if (!t) { closePip(); return; }
+  const d = w.document;
+  if (PIP.theme !== String(isDark)) { // follow the page's theme
+    PIP.theme = String(isDark);
+    const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
+    d.documentElement.style.cssText = `color-scheme:${isDark ? 'dark' : 'light'};--bd:${v('--border')};--p2:${v('--panel2')};--mu:${v('--muted')}`;
+    d.body.style.background = v('--bg'); d.body.style.color = v('--fg');
+  }
+  const ctl = `${t.id}|${t.type}|${t.running}|${t.done}`;
+  if (PIP.ctl !== ctl) { // countdowns get Pause/Resume and Reset (Restart once done); the rest only show
+    PIP.ctl = ctl;
+    const b = (act, label) => `<button type="button" data-act="${act}">${label}</button>`;
+    PIP.bar.innerHTML = t.type !== 'duration' ? '' : t.done ? b('restart', 'Restart') : b('toggle', t.running ? 'Pause' : 'Resume') + b('reset', 'Reset');
+  }
+  const W = PIP.cv.clientWidth, H = PIP.cv.clientHeight, r = w.devicePixelRatio || 1;
+  if (!W || !H) return;
+  if (PIP.cv.width !== Math.round(W * r) || PIP.cv.height !== Math.round(H * r)) { PIP.cv.width = Math.round(W * r); PIP.cv.height = Math.round(H * r); }
+  paintFace(PIP.g, W, H, r, t, now);
+}
+async function openVideoPip() {
+  const cv = document.createElement('canvas'), v = document.createElement('video');
+  cv.width = cv.height = 360;
+  v.muted = true; v.playsInline = true;
+  v.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.append(v);
+  PIP.cv = cv; PIP.g = cv.getContext('2d'); PIP.video = v;
+  const draw = () => {
+    const now = Date.now(), t = pipTimer();
+    tickTimers(now);
+    if (t) paintFace(PIP.g, 180, 180, 2, t, now); else closePip();
+  };
+  draw();
+  v.srcObject = cv.captureStream();
+  PIP.iv = setInterval(draw, 250); // animation frames stop in a hidden tab; intervals keep going
+  v.addEventListener('leavepictureinpicture', () => { if (PIP.video === v) closePip(); });
+  await v.play();
+  await v.requestPictureInPicture();
+  refreshPipBtns();
+}
+function paintFace(g, W, H, r, t, now) { // the pop-out picture: one timer or custom ring, big and simple
+  const x = timerInfo(t, now), c = adapt(t.color), p = clamp(x.p, 0, 1), disc = t.shape === 'disc';
+  const R = Math.max(10, Math.min(W, H) / 2 - 8), X = W / 2, Y = H / 2, a0 = targetStart(), a1 = a0 + p * TAU;
+  g.setTransform(r, 0, 0, r, 0, 0);
+  g.fillStyle = rgba(BG); g.fillRect(0, 0, W, H);
+  if (disc) {
+    g.fillStyle = rgba(c, isDark ? 0.12 : 0.1); g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill();
+    if (p > 0.0004) {
+      g.fillStyle = rgba(c, isDark ? 0.55 : 0.45); g.beginPath(); g.moveTo(X, Y); g.arc(X, Y, R, a0, a1); g.closePath(); g.fill();
+      g.strokeStyle = rgba(c); g.lineWidth = Math.max(2, R * 0.025); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(X, Y); g.lineTo(X + R * Math.cos(a1), Y + R * Math.sin(a1)); g.stroke();
+    }
+    g.lineWidth = Math.max(1.5, R * 0.02); g.strokeStyle = rgba(c, 0.6); g.beginPath(); g.arc(X, Y, R, 0, TAU); g.stroke();
+  } else {
+    const th = R * 0.16, rr = R - th / 2;
+    g.lineWidth = th; g.lineCap = 'butt'; g.strokeStyle = rgba(c, isDark ? 0.18 : 0.16); g.beginPath(); g.arc(X, Y, rr, 0, TAU); g.stroke();
+    if (p > 0.0004) { g.lineCap = 'round'; g.strokeStyle = rgba(c); g.beginPath(); g.arc(X, Y, rr, a0, a1); g.stroke(); }
+  }
+  const fl = t.done ? 0.5 + 0.5 * Math.sin(now / 260) : 0;
+  if (fl > 0.01) {
+    g.save(); g.shadowColor = rgba(c, 0.9); g.shadowBlur = R * 0.3 * fl;
+    g.strokeStyle = rgba(c, 0.6 * fl); g.lineWidth = R * 0.05; g.beginPath(); g.arc(X, Y, R * 0.975, 0, TAU); g.stroke(); g.restore();
+  }
+  const inner = disc ? R : R * 0.8;
+  const text = (s, weight, size, y, color) => { // shrink to fit, with a soft halo so it reads over the disc
+    g.font = `${weight} ${size}px ${FONT}`;
+    const w = g.measureText(s).width, max = inner * 1.6;
+    if (w > max) g.font = `${weight} ${size * max / w}px ${FONT}`;
+    g.lineWidth = 3; g.lineJoin = 'round'; g.strokeStyle = rgba(BG, disc ? 0.55 : 0); g.strokeText(s, X, y);
+    g.fillStyle = color; g.fillText(s, X, y);
+  };
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  text(tName(t).toUpperCase(), 800, inner * 0.13, Y - inner * 0.36, rgba(c));
+  text(x.main, 700, inner * 0.4, Y + inner * 0.02, rgba(FG));
+  text(x.sub, 600, inner * 0.115, Y + inner * 0.36, rgba(FG, 0.62));
+}
 
 /* ---------- drag cards to reorder rings (mouse: press and move · touch: long-press) ---------- */
 let drag = null, justDragged = false;
