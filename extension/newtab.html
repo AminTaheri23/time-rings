@@ -239,7 +239,7 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--border);border-r
 .err{color:var(--danger);font-size:12.5px;min-height:1.1em;margin:6px 0 0}
 .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 
-/* minimal display: just the dial and the clock; the top bar shrinks to a faint corner cluster (toggle + settings) */
+/* minimal display: just the dial and the clock (rings only: just the dial); the top bar shrinks to a faint corner cluster (toggle + settings) */
 body.minimal .bm, body.minimal #legend, body.minimal .side, body.minimal .brand,
 body.minimal #themeBtn, body.minimal #cbBtn, body.minimal #addTimerBtn{display:none}
 body.minimal .topbar{position:fixed;top:10px;right:12px;z-index:5;padding:0;opacity:.35;transition:opacity .25s}
@@ -247,6 +247,7 @@ body.minimal .topbar:hover, body.minimal .topbar:focus-within{opacity:1}
 body.minimal .dial-wrap{width:max(240px, min(94vw, calc(100vh - var(--other, 330px)), 1100px))}
 /* visibility, not opacity: the .swap animation fills forwards with opacity:1 and would win */
 body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:hidden}
+body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, until you hover a ring */
 @media (max-width:640px){ body.minimal .app{padding-top:54px} }
 
 @media (prefers-reduced-motion: reduce){
@@ -378,8 +379,8 @@ body.minimal .center.idle .c-label, body.minimal .center.idle .c-sub{visibility:
       <label class="switch"><span>Smooth seconds</span><input type="checkbox" id="smooth"><i></i></label>
       <label class="switch"><span>Seconds digits</span><input type="checkbox" id="secDigits"><i></i></label>
       <p class="hint">Turn off to hide the ticking seconds in the clock, cards and timers. The seconds ring keeps moving.</p>
-      <label class="switch"><span>Minimal display</span><input type="checkbox" id="minimal"><i></i></label>
-      <p class="hint">Shows only the rings and the clock. Press M or use the corner button to toggle.</p>
+      <div class="row"><span>Minimal display</span><div class="seg" data-key="minimal" data-opts="0:Off,1:Rings + clock,2:Rings only"></div></div>
+      <p class="hint">Hides everything but the dial. Press M or use the corner button to step through Off, Rings + clock and Rings only.</p>
     </section>
     <section>
       <h3>Layout</h3>
