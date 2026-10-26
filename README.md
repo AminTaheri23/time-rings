@@ -55,6 +55,7 @@ That is all. Your settings are saved in the browser (`localStorage`). To use it 
 | **Markers** | Midnight/noon, sunrise/sunset, work hours, night, weekends, mid-month, solstices and equinoxes, quarters, your birthday and more, each individually toggled. |
 | **Custom rings** | Your own rings: a time window every day (start and end time, or start and duration, on the weekdays you pick) or once between two dates. Saved with a card in the bottom bar. |
 | **Timers** | Colored countdown timers, each drawn as its own ring. When one finishes, it chimes several times and the page slowly breathes in the timer's color until you click. |
+| **Disc timer** | Show a timer as a filled disc in the center of the dial that empties as time runs out, like a kitchen Time Timer. Pick it in the timer dialog or with the pie icon on the timer's card. |
 | **Daily briefing** | On the first new tab of the day, the rings are shown one by one with a short caption timed to your reading speed. Skippable. |
 | **Bookmarks** | Chrome bookmarks bar, folders and most-visited sites on the new tab (extension version). |
 | **Looks** | Light, dark or auto theme. Heat, light-spectrum and viridis palettes. A color-blind-safe (Okabe–Ito) mode. Smooth animation, hover highlight. |
@@ -100,7 +101,7 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 - **Gear icon** opens settings: birthdate, presets, palette, markers, meaning colors, briefing, shortcuts.
 - **Half-circle icon** switches theme. **Eye icon** toggles color-blind-friendly colors.
 - **Corner-brackets icon** (or the `M` key) steps through the minimal display: **Rings + clock**, then **Rings only** (no clock; hover a ring to see its value), then back to off. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, so timers can't be paused or removed until you switch it off. Ring names stay visible if color-blind mode is on.
-- **+ Timer** adds a timer (duration or until a clock time, with a label and a color).
+- **+ Timer** adds a timer (duration or until a clock time, with a label and a color). Choose **Show as: Disc** to draw it as a filled disc in the center; the pie icon on a timer's card switches it between ring and disc later.
 - **Add ring** (the last card under the dial, or Settings → Rings → **＋ Custom ring**) adds a [custom ring](#custom-rings).
 
 ![New user default view](docs/screenshots/new-user.png)
@@ -177,6 +178,7 @@ Add rings for your own time windows. Each is saved in the browser and keeps a ca
 
 - Up to six timers, each with a label and a color, drawn as extra rings.
 - Duration timers or "ends at" clock-time timers. Pause, reset and remove from the card.
+- **Disc:** one timer at a time can be drawn as a disc filling the center of the dial instead of a ring. The colored wedge shrinks as time runs out, and the clock's second line shows its time left. The disc is translucent so the clock stays readable; in the **Rings only** minimal display it is solid and stands on its own. Hover it to see the timer's details. Making another timer the disc turns the previous one back into a ring.
 - Timers survive page reloads and closing the tab. A timer that ended while the page was closed is shown as finished when you return.
 - **When a timer ends:** a chime plays a few more times, and the whole page background breathes slowly in the timer's color (kept deliberately mild). **Click anywhere on the page to dismiss.** The dismissing click does not trigger anything else.
 - Browsers block audio until you interact with the page once. If you have not clicked yet, the visual alarm still works.

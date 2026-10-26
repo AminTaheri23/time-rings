@@ -121,6 +121,11 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .card.off .val{color:var(--muted)}
 .card.off .bar i{background:var(--muted);opacity:.4}
 .card.off .dot{background:transparent;box-shadow:inset 0 0 0 1.6px var(--c)}
+.card .tb{width:22px;height:22px;margin:-6px -5px -6px 0;padding:0;border:0;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:color .2s,background-color .2s}
+.card .tb:hover{color:var(--fg);background:var(--panel2)}
+.card .tb[aria-pressed="true"]{color:var(--c)}
+.card .tb svg{width:15px;height:15px}
+.readout .card.tmr{min-width:176px}
 .card .val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .sub{font-size:12px;color:var(--muted);margin-top:2px;min-height:1.3em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar{height:5px;border-radius:3px;background:var(--ct);margin-top:9px;overflow:hidden}
@@ -440,6 +445,7 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
     <div id="tUntilBox" hidden>
       <label class="field"><span>Date and time</span><input type="datetime-local" id="tUntil"></label>
     </div>
+    <div class="row"><span>Show as</span><div class="seg" id="tShape"><button type="button" data-v="ring">Ring</button><button type="button" data-v="disc">Disc</button></div></div>
     <div class="row"><span>Color</span><div class="swatches" id="tSwatches"></div></div>
     <p class="err" id="tErr"></p>
     <div class="dlg-actions">
@@ -1236,8 +1242,13 @@ let size = 0, cx = 0, cy = 0, dpr = 1, firstLayout = true;
 const vis = {}; // animated state per ring key
 let activeSet = new Set();
 let hover = null, hoverAmt = 0;
+function discKey() { // the one timer drawn as a filled disc in the center, if it's showing
+  const t = S.timers.find(x => x.shape === 'disc' && !x.hidden && !isRingT(x));
+  return t ? 't:' + t.id : null;
+}
 function activeKeys() { // rings drawn on the dial, outside → inside, in the user's order
-  const shown = S.timers.filter(t => !t.hidden); // custom rings don't count toward the timer limit
+  const dk = discKey(); // the disc sits in the center and takes no ring slot
+  const shown = S.timers.filter(t => !t.hidden && 't:' + t.id !== dk); // custom rings don't count toward the timer limit
   const live = new Set(shown.filter(isRingT).concat(shown.filter(t => !isRingT(t)).slice(0, MAX_TIMER_RINGS)).map(t => 't:' + t.id));
   return S.ringOrder.filter(k => k in RINGS ? !!S.rings[k] : live.has(k));
 }
@@ -1271,13 +1282,19 @@ function relayout() {
     const tr = r - slot / 2, tth = slot * (bigRing(k) ? 0.76 : 0.64);
     let v = vis[k];
     if (!v) v = vis[k] = { r: tr, th: 0, a: 0, hl: 0, disp: 0, flash: 0, born: tp + (firstLayout ? i * 90 : 0) };
-    v.tr = tr; v.tth = tth; v.ta = 1; v.slot = slot;
+    v.tr = tr; v.tth = tth; v.ta = 1; v.slot = slot; v.disc = false;
     r -= slot;
   });
   for (const k in vis) if (!activeSet.has(k)) vis[k].ta = 0;
   const centerR = keys.length ? Math.max(minC * 0.85, r - 3) : size * 0.24; // all rings hidden: keep the clock modest
   centerEl.style.setProperty('--cs', (centerR * 2 * 0.9).toFixed(1) + 'px');
   centerRad = centerR * 0.9;
+  const dk = discKey();
+  if (dk) { // r 0 and a slot as wide as the center, so hovering anywhere on the disc finds it
+    activeSet.add(dk);
+    const v = vis[dk] || (vis[dk] = { r: 0, th: 0, a: 0, hl: 0, disp: 0, flash: 0, born: tp });
+    Object.assign(v, { disc: true, tr: 0, tth: 0, ta: 1, slot: centerRad * 2 });
+  }
   firstLayout = false;
 }
 let centerRad = 100;
@@ -1482,8 +1499,33 @@ function drawPoints(sp, r, th) {
     ctx.restore();
   }
 }
+function drawDisc(k, v, now) { // a timer as a filled disc in the center that empties as time runs out
+  const t = timerByKey(k);
+  if (!t || v.a < 0.01) return;
+  const c = colorOf(k), p = clamp(v.disp, 0, 1), R = centerRad * (1 + 0.03 * v.hl);
+  ctx.globalAlpha = v.a * (1 - hoverAmt * 0.62 * (1 - v.hl));
+  ctx.fillStyle = rgba(c, isDark ? 0.1 : 0.08);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+  if (p > 0.0004) { // translucent, so the clock on top stays readable; rings-only shows no text until a hover, so it's solid
+    ctx.fillStyle = rgba(c, (isDark ? 0.5 : 0.42) + (S.minimal === 2 ? 0.4 * (1 - hoverAmt) : 0));
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, ang(0), ang(p)); ctx.closePath(); ctx.fill();
+    const a = ang(p);
+    ctx.strokeStyle = rgba(c, 1); ctx.lineWidth = Math.max(2, R * 0.025); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a)); ctx.stroke();
+  }
+  ctx.lineWidth = Math.max(1.5, R * 0.018); ctx.strokeStyle = rgba(c, isDark ? 0.6 : 0.5);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+  let fl = v.flash;
+  if (t.done) fl = Math.max(fl, 0.35 + 0.35 * Math.sin(now / 260));
+  if (fl > 0.01) {
+    ctx.save(); ctx.shadowColor = rgba(c, 0.9); ctx.shadowBlur = R * 0.25 * fl;
+    ctx.strokeStyle = rgba(c, 0.6 * fl); ctx.lineWidth = R * 0.05; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+}
 function drawRing(k, T, now) {
   const v = vis[k];
+  if (v.disc) { drawDisc(k, v, now); return; }
   if (v.a < 0.01 || v.th < 0.5) return;
   const isMain = k in RINGS;
   const t = isMain ? null : timerByKey(k);
@@ -1640,6 +1682,8 @@ function updateCenter(T, now) {
     label = `${DAY3[T.dow]} · ${MON3[T.mo]} ${T.dt}`;
     main = (S.hour12 ? `${(T.h % 12) || 12}:${pad(T.mi)}` : `${pad(T.h)}:${pad(T.mi)}`) + (S.secDigits ? ':' + pad(T.s) : '');
     sub = activeSet.size ? (S.hour12 ? (T.h < 12 ? 'AM · ' : 'PM · ') : '') + `Day ${T.doy} · Week ${T.wk}` : 'All rings hidden · click a card';
+    const dk = discKey(), dt = dk && activeSet.has(dk) ? timerByKey(dk) : null;
+    if (dt) sub = `${tName(dt)} · ${dt.done ? 'done' : timerInfo(dt, now).main + (dt.running ? ' left' : ' · paused')}`; // the disc's time left
   }
   if (mode !== centerMode) {
     centerMode = mode;
@@ -1659,6 +1703,7 @@ function updateCenter(T, now) {
 const readoutEl = $('#readout');
 let cards = [];
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const DISC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 1 1 3.5 12z" fill="currentColor" stroke="none"/></svg>';
 const RING_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8" opacity=".35"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>';
 function setHover(h) {
   const prev = hover && hover.key;
@@ -1710,12 +1755,30 @@ function addCard(key, name, t, i) {
   el.className = 'card'; el.dataset.key = key; el.style.animationDelay = (i * 30) + 'ms';
   el.innerHTML = '<div class="top"><button type="button" class="vis"><span class="dot"></span></button><span class="nm"></span><span class="pct"></span></div><div class="val"></div><div class="sub"></div><div class="bar"><i></i></div>' + (t ? '<div class="ctl"></div>' : '');
   el.querySelector('.nm').textContent = name;
+  if (t && !isRingT(t)) { // timers: ring/disc toggle in the top row
+    el.classList.add('tmr');
+    el.querySelector('.top').insertAdjacentHTML('beforeend', `<button type="button" class="tb" data-act="shape" data-id="${t.id}">${DISC_ICON}</button>`);
+  }
   const card = { key, el, t, name, vis: el.querySelector('.vis'), val: el.querySelector('.val'), sub: el.querySelector('.sub'), pct: el.querySelector('.pct'), bar: el.querySelector('.bar i'), ctl: el.querySelector('.ctl') };
   el.addEventListener('mouseenter', () => { if (!drag && !BRIEF.on && activeSet.has(key)) setHover({ key, f: null, src: 'card' }); });
   el.addEventListener('mouseleave', () => { if (hover && hover.src === 'card') setHover(null); });
   readoutEl.appendChild(el); cards.push(card);
   setCardState(card);
-  if (t) renderCtl(card);
+  if (t) { renderCtl(card); setTimerBtns(card); }
+}
+function setTimerBtns(card) {
+  const b = card.el.querySelector('.tb[data-act="shape"]');
+  if (!b) return;
+  const disc = card.t.shape === 'disc';
+  b.setAttribute('aria-pressed', String(disc));
+  b.title = disc ? 'Shown as a disc in the center · click for a ring' : 'Show as a disc in the center';
+  b.setAttribute('aria-label', disc ? `Show ${card.name} as a ring` : `Show ${card.name} as a disc`);
+}
+function setShape(t, disc) { // only one disc at a time: it fills the center
+  for (const o of S.timers) delete o.shape;
+  if (disc) t.shape = 'disc';
+  save(); bump(); relayout();
+  for (const c of cards) if (c.t) setTimerBtns(c);
 }
 function refreshCards() { paintCards(); cards.forEach(setCardState); }
 function paintCards() { // card accent = the ring's color right now (weekend red on a Saturday, sky color at dusk…)
@@ -1768,6 +1831,7 @@ readoutEl.addEventListener('click', (e) => {
   const now = Date.now();
   switch (b.dataset.act) {
     case 'edit': openRingDlg(t); return;
+    case 'shape': setShape(t, t.shape !== 'disc'); return;
     case 'toggle':
       if (t.running) { t.remaining = Math.max(0, t.endAt - now); t.endAt = null; t.running = false; }
       else { t.endAt = now + t.remaining; t.running = true; }
@@ -1880,7 +1944,7 @@ function dragEnd() {
 readoutEl.addEventListener('pointerdown', (e) => {
   if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
   const el = e.target.closest('.card[data-key]');
-  if (!el || e.target.closest('.ctl')) return;
+  if (!el || e.target.closest('.ctl, .tb')) return;
   drag = { el, key: el.dataset.key, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, pid: e.pointerId, type: e.pointerType, active: false };
   if (e.pointerType !== 'mouse') drag.timer = setTimeout(dragStart, 380); // long-press, so a swipe still scrolls the row
 });
@@ -1908,7 +1972,8 @@ readoutEl.addEventListener('keydown', (e) => { // Alt + ← / → moves the focu
 
 /* ---------- timer dialog ---------- */
 const dlg = $('#timerDlg');
-let tType = 'duration', tColor = TIMER_COLORS[0];
+let tType = 'duration', tColor = TIMER_COLORS[0], tShape = 'ring';
+const segPick = (box, v) => { for (const b of box.children) b.classList.toggle('on', b.dataset.v === v); };
 function timerPalette() { return S.colorblind ? TIMER_COLORS_CB : TIMER_COLORS; }
 function nextTimerColor() {
   const set = timerPalette(), used = new Set(S.timers.map(t => String(t.color).toLowerCase()));
@@ -1940,11 +2005,13 @@ function openTimerDlg() {
   const d = new Date(Date.now() + 864e5); d.setSeconds(0, 0);
   $('#tUntil').value = toLocalInput(d);
   tColor = nextTimerColor(); renderSwatches('#tSwatches');
+  tShape = 'ring'; segPick($('#tShape'), tShape);
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
   setTimeout(() => $('#tLabel').focus(), 60);
 }
 function closeDlg() { if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open'); }
 for (const b of $('#tType').children) b.addEventListener('click', () => setTType(b.dataset.v));
+for (const b of $('#tShape').children) b.addEventListener('click', () => { tShape = b.dataset.v; segPick($('#tShape'), tShape); });
 for (const b of $('#tQuick').children) b.addEventListener('click', () => {
   const m = +b.dataset.m;
   $('#tH').value = Math.floor(m / 60); $('#tM').value = m % 60; $('#tS').value = 0;
@@ -1964,13 +2031,13 @@ $('#timerForm').addEventListener('submit', (e) => {
     if (!(target > now)) { $('#tErr').textContent = 'Pick a date and time in the future.'; return; }
     t = { id: uid(), label, color: tColor, type: 'until', total: target - now, endAt: target, remaining: target - now, running: true, done: false };
   }
+  if (tShape === 'disc') { for (const o of S.timers) delete o.shape; t.shape = 'disc'; } // the new disc replaces any other
   S.timers.push(t); save(); timersChanged(); closeDlg();
 });
 
 /* ---------- custom ring dialog ---------- */
 const rdlg = $('#ringDlg');
 let rRepeat = 'daily', rEnds = 'end', rEditId = null, rDays = new Set();
-const segPick = (box, v) => { for (const b of box.children) b.classList.toggle('on', b.dataset.v === v); };
 const timeMin = (v) => { const m = /^(\d{1,2}):(\d{2})/.exec(v || ''); return m ? +m[1] * 60 + +m[2] : NaN; };
 const minTime = (n) => `${pad(Math.floor(n / 60) % 24)}:${pad(n % 60)}`;
 function readRing() { // the dialog's fields → ring fields, or an error message
