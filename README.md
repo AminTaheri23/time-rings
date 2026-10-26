@@ -56,6 +56,7 @@ That is all. Your settings are saved in the browser (`localStorage`). To use it 
 | **Custom rings** | Your own rings: a time window every day (start and end time, or start and duration, on the weekdays you pick) or once between two dates. Saved with a card in the bottom bar. |
 | **Timers** | Colored countdown timers, each drawn as its own ring. When one finishes, it chimes several times and the page slowly breathes in the timer's color until you click. |
 | **Disc timer** | Show a timer as a filled disc in the center of the dial that empties as time runs out, like a kitchen Time Timer. Pick it in the timer dialog or with the pie icon on the timer's card. |
+| **Pop-out** | Float a timer or custom ring in a small always-on-top window over your other apps, like picture-in-picture video, with pause and reset buttons. |
 | **Daily briefing** | On the first new tab of the day, the rings are shown one by one with a short caption timed to your reading speed. Skippable. |
 | **Bookmarks** | Chrome bookmarks bar, folders and most-visited sites on the new tab (extension version). |
 | **Looks** | Light, dark or auto theme. Heat, light-spectrum and viridis palettes. A color-blind-safe (Okabe–Ito) mode. Smooth animation, hover highlight. |
@@ -102,6 +103,7 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 - **Half-circle icon** switches theme. **Eye icon** toggles color-blind-friendly colors.
 - **Corner-brackets icon** (or the `M` key) steps through the minimal display: **Rings + clock**, then **Rings only** (no clock; hover a ring to see its value), then back to off. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, so timers can't be paused or removed until you switch it off. Ring names stay visible if color-blind mode is on.
 - **+ Timer** adds a timer (duration or until a clock time, with a label and a color). Choose **Show as: Disc** to draw it as a filled disc in the center; the pie icon on a timer's card switches it between ring and disc later.
+- **Pop-out icon** (the small screen on a timer's or custom ring's card) floats it in a picture-in-picture window. Click it again, or close the window, to bring it back.
 - **Add ring** (the last card under the dial, or Settings → Rings → **＋ Custom ring**) adds a [custom ring](#custom-rings).
 
 ![New user default view](docs/screenshots/new-user.png)
@@ -182,6 +184,16 @@ Add rings for your own time windows. Each is saved in the browser and keeps a ca
 - Timers survive page reloads and closing the tab. A timer that ended while the page was closed is shown as finished when you return.
 - **When a timer ends:** a chime plays a few more times, and the whole page background breathes slowly in the timer's color (kept deliberately mild). **Click anywhere on the page to dismiss.** The dismissing click does not trigger anything else.
 - Browsers block audio until you interact with the page once. If you have not clicked yet, the visual alarm still works.
+
+### Pop-out
+
+The pop-out icon on a timer's card (custom rings have one too) opens the timer in a small window that stays on top of every other app and window, like picture-in-picture video.
+
+- It shows the timer big: its ring or disc, the time left and when it ends. Countdowns get **Pause/Resume** and **Reset** (**Restart** once finished) right in the window.
+- It keeps time while the page is in the background, and the alarm still chimes. The first click in the pop-out after an alarm only silences it.
+- One pop-out at a time: the icon on another card swaps what it shows. Click the pressed icon, or close the window, to end it.
+- **Browser support:** Chrome and Edge 116+ use [Document Picture-in-Picture](https://developer.chrome.com/docs/web-platform/document-picture-in-picture), which gives the buttons. Safari gets a video picture-in-picture of the same face, without buttons. Firefox supports neither, so the icon is hidden there.
+- The pop-out belongs to the tab that opened it. In the new-tab extension it closes if you navigate that tab to another site, so keep a Time Rings tab open for it.
 
 ## Daily briefing
 
@@ -314,6 +326,7 @@ Handy checks while developing:
 - Sunrise and sunset come from the time zone, so they are approximate (within minutes) for places far from the zone's reference city.
 - The "typical American" life data are US averages and will not fit everyone.
 - Chrome's extension Errors page can keep old entries after an update until you clear them.
+- The pop-out window closes with the tab that opened it, and Firefox has no picture-in-picture API for it.
 
 ## Inspiration
 
