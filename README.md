@@ -22,6 +22,7 @@ Seconds, minutes, hours, day of week, day of month, month and your age (0–100)
 - [Meaning colors](#meaning-colors)
 - [The age ring](#the-age-ring)
 - [Markers](#markers)
+- [Custom rings](#custom-rings)
 - [Timers](#timers)
 - [Daily briefing](#daily-briefing)
 - [Bookmarks](#bookmarks)
@@ -52,6 +53,7 @@ That is all. Your settings are saved in the browser (`localStorage`). To use it 
 | **Meaning colors** | Weekends in red, hours shaded by sunrise and sunset for your time zone, months by season, age by life stage. Each has custom color pickers. |
 | **Age ring** | Enter your birthdate. Milestones and typical-American life data (driving, voting, marriage, first child, retirement…) are marked on the ring. |
 | **Markers** | Midnight/noon, sunrise/sunset, work hours, night, weekends, mid-month, solstices and equinoxes, quarters, your birthday and more, each individually toggled. |
+| **Custom rings** | Your own rings: a time window every day (start and end time, or start and duration, on the weekdays you pick) or once between two dates. Saved with a card in the bottom bar. |
 | **Timers** | Colored countdown timers, each drawn as its own ring. When one finishes, it chimes several times and the page slowly breathes in the timer's color until you click. |
 | **Daily briefing** | On the first new tab of the day, the rings are shown one by one with a short caption timed to your reading speed. Skippable. |
 | **Bookmarks** | Chrome bookmarks bar, folders and most-visited sites on the new tab (extension version). |
@@ -99,6 +101,7 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 - **Half-circle icon** switches theme. **Eye icon** toggles color-blind-friendly colors.
 - **Corner-brackets icon** (or the `M` key) toggles the minimal display. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, so timers can't be paused or removed until you switch it off. Ring names stay visible if color-blind mode is on.
 - **+ Timer** adds a timer (duration or until a clock time, with a label and a color).
+- **Add ring** (the last card under the dial, or Settings → Rings → **＋ Custom ring**) adds a [custom ring](#custom-rings).
 
 ![New user default view](docs/screenshots/new-user.png)
 
@@ -158,6 +161,15 @@ Every marker can be switched on or off in settings, and the choice is saved.
 | Typical life data (US) | Age ring |
 
 Shapes and dash patterns differ per marker, so they stay distinguishable in color-blind mode.
+
+## Custom rings
+
+Add rings for your own time windows. Each is saved in the browser and keeps a card in the bottom bar, where **Edit** and **Remove** live. Like the other rings, it can be shown, hidden and dragged.
+
+- **Every day:** a start time plus an end time (*Work 09:00–17:00*), or a start time plus a duration (*Gym 18:00, lasts 1 h 30 m*). Pick the weekdays it runs on. An end earlier than the start runs past midnight (*Sleep 22:00–06:00*).
+- **Once:** a start date and time plus an end, or plus a duration in days, hours and minutes (*Trip, Oct 28 12:00 to Oct 30 12:00*).
+- **How it fills:** a custom ring fills as its window passes, and the card shows the time left. Between windows, the card says when it starts next. A daily ring stays full for the rest of the day after it ends, then empties until its next start. A once ring stays full after it ends.
+- There is no alarm at the end; use a timer for that. Custom rings don't count toward the six-timer limit.
 
 ## Timers
 
@@ -242,7 +254,7 @@ Everything is stored under a single `localStorage` key, `timeRings.v1`. Changes 
 ## Privacy
 
 - No analytics, no accounts, no network requests of its own.
-- Settings, birthdate and timers are stored only in your browser's `localStorage`.
+- Settings, birthdate, timers and custom rings are stored only in your browser's `localStorage`.
 - Location for sunrise and sunset is derived from your time zone, not from the browser's geolocation prompt.
 - The extension reads bookmarks and top sites only to display them. Nothing leaves your device.
 
