@@ -160,7 +160,7 @@ const DEFAULTS = {
   style: 'arcs', start: 'bottom', hour12: false, weekStart: 0,
   ringOrder: ORDERS.slowOut.slice(), // outside → inside; holds ring ids and timer keys ('t:<id>')
   secDigits: true, shortcuts: 'bar',
-  minimal: false, // only the dial and the clock
+  minimal: 0, // 0 off · 1 only the dial and the clock · 2 only the dial
   brief: true, lastBrief: '', // daily briefing on/off, and the local date it last played
   meaning: { week: true, day: true, hour: true, month: true, age: true }, // color rings by meaning
   mcol: {},             // custom meaning colors, e.g. { weekend: '#ff0000' }; empty = defaults
@@ -194,7 +194,7 @@ function load() {
   normOrder(out);
   if (!['off','bar','top'].includes(out.shortcuts)) out.shortcuts = DEFAULTS.shortcuts;
   out.secDigits = out.secDigits !== false;
-  out.minimal = out.minimal === true;
+  out.minimal = out.minimal === true ? 1 : [1, 2].includes(out.minimal) ? out.minimal : 0; // was a plain on/off
   const okNum = (v, m) => typeof v === 'number' && isFinite(v) && Math.abs(v) <= m;
   if (!okNum(out.lat, 90) || !okNum(out.lon, 180)) { out.lat = null; out.lon = null; }
   if (!PALETTES[out.palette]) out.palette = DEFAULTS.palette;
@@ -318,7 +318,9 @@ function adapt(hex) { // keep ring colors readable on the current background
   return c;
 }
 const pal = () => S.colorblind ? CB : (PALETTES[S.palette] || PALETTES.heat);
-function applyMinimal() { document.body.classList.toggle('minimal', !!S.minimal); }
+const MIN_NAMES = ['off', 'rings + clock', 'rings only'];
+const nextMinimal = () => { S.minimal = (S.minimal + 1) % 3; changed(); }; // M and the corner button: off → rings + clock → rings only → off
+function applyMinimal() { document.body.classList.toggle('minimal', S.minimal > 0); document.body.classList.toggle('bare', S.minimal === 2); }
 function applyTheme() {
   const root = document.documentElement;
   if (S.theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', S.theme);
@@ -1686,7 +1688,7 @@ function buildSettings() {
     S.ringOrder = ORDERS[e.target.value].concat(S.ringOrder.filter(k => !(k in RINGS)));
     changed({ cards: true });
   });
-  for (const id of ['colorblind', 'labels', 'smooth', 'secDigits', 'minimal']) $('#' + id).addEventListener('change', (e) => { S[id] = e.target.checked; changed(); });
+  for (const id of ['colorblind', 'labels', 'smooth', 'secDigits']) $('#' + id).addEventListener('change', (e) => { S[id] = e.target.checked; changed(); });
   $('#briefOn').addEventListener('change', (e) => { S.brief = e.target.checked; changed(); });
   $('#briefPlay').addEventListener('click', () => { closeDrawer(); setTimeout(() => { if (!startBrief()) window.alert('Turn on at least one of Age, Month, Day of month, Day of week or Hours to get a briefing.'); }, 380); });
   $('#birthdate').addEventListener('change', (e) => { S.birthdate = e.target.value; changed(); });
@@ -1749,8 +1751,9 @@ function syncUI() {
   if (document.activeElement !== $('#birthdate')) $('#birthdate').value = S.birthdate || '';
   if (document.activeElement !== $('#milestones')) $('#milestones').value = S.milestones || '';
   $('#cbBtn').setAttribute('aria-pressed', String(S.colorblind));
-  $('#minBtn').setAttribute('aria-pressed', String(S.minimal));
-  $('#minimal').checked = S.minimal;
+  const mb = $('#minBtn');
+  mb.setAttribute('aria-pressed', String(S.minimal > 0));
+  mb.setAttribute('aria-label', `Minimal display: ${MIN_NAMES[S.minimal]}`); mb.title = `Minimal display: ${MIN_NAMES[S.minimal]} (M)`;
   const icons = {
     auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
     light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
@@ -1768,7 +1771,7 @@ function syncUI() {
 /* ---------- top bar + onboarding ---------- */
 $('#themeBtn').addEventListener('click', () => { S.theme = { auto: 'light', light: 'dark', dark: 'auto' }[S.theme]; changed(); });
 $('#cbBtn').addEventListener('click', () => { S.colorblind = !S.colorblind; changed(); });
-$('#minBtn').addEventListener('click', () => { S.minimal = !S.minimal; changed(); });
+$('#minBtn').addEventListener('click', nextMinimal);
 $('#addTimerBtn').addEventListener('click', openTimerDlg);
 $('#legend').addEventListener('click', () => { // cycle Heat → Spectrum → Viridis → color-blind → Heat
   const ids = Object.keys(PALETTES);
@@ -1947,7 +1950,7 @@ document.addEventListener('keydown', (e) => {
     else if (e.key === 'ArrowLeft') { goBrief(BRIEF.i - 1); e.preventDefault(); }
   } else if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open && !rdlg.open
       && !(e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) {
-    S.minimal = !S.minimal; changed(); // M toggles the minimal display
+    nextMinimal();
   }
   dismissAlarm(); ensureAudio(); clearTitle();
 });
