@@ -8,7 +8,7 @@ Seconds, minutes, hours, day of week, day of month, month and your age (0–100)
 
 ![Time Rings demo](docs/demo.gif)
 
-[Watch the full-quality video](docs/demo.mp4)
+[Watch the full-quality video, with music](docs/demo.mp4)
 
 ![Time Rings with every ring on](docs/screenshots/everything-dark.png)
 
@@ -110,6 +110,10 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 
 New users start with only **Day of week**, **Hours** and **Month** on. Everything else is one click away.
 
+![Minimal display, rings only, with a disc timer](docs/screenshots/rings-only.png)
+
+The **Rings only** minimal display: no clock, no cards, just the rings and a disc timer in the middle.
+
 ## Rings
 
 | Ring | Fills over | Notes |
@@ -169,10 +173,14 @@ Shapes and dash patterns differ per marker, so they stay distinguishable in colo
 
 Add rings for your own time windows. Each is saved in the browser and keeps a card in the bottom bar, where **Edit** and **Remove** live. Like the other rings, it can be shown, hidden and dragged.
 
+![Custom rings: Work, Sleep and a trip](docs/screenshots/custom-rings.png)
+
 - **Every day:** a start time plus an end time (*Work 09:00–17:00*), or a start time plus a duration (*Gym 18:00, lasts 1 h 30 m*). Pick the weekdays it runs on. An end earlier than the start runs past midnight (*Sleep 22:00–06:00*).
 - **Once:** a start date and time plus an end, or plus a duration in days, hours and minutes (*Trip, Oct 28 12:00 to Oct 30 12:00*).
 - **How it fills:** a custom ring fills as its window passes, and the card shows the time left. Between windows, the card says when it starts next. A daily ring stays full for the rest of the day after it ends, then empties until its next start. A once ring stays full after it ends.
 - There is no alarm at the end; use a timer for that. Custom rings don't count toward the six-timer limit.
+
+![The New ring dialog](docs/screenshots/custom-ring-dialog.png)
 
 ## Timers
 
@@ -185,15 +193,20 @@ Add rings for your own time windows. Each is saved in the browser and keeps a ca
 - **When a timer ends:** a chime plays a few more times, and the whole page background breathes slowly in the timer's color (kept deliberately mild). **Click anywhere on the page to dismiss.** The dismissing click does not trigger anything else.
 - Browsers block audio until you interact with the page once. If you have not clicked yet, the visual alarm still works.
 
+![A disc timer under the clock](docs/screenshots/disc-timer.png)
+
 ### Pop-out
 
 The pop-out icon on a timer's card (custom rings have one too) opens the timer in a small window that stays on top of every other app and window, like picture-in-picture video.
 
+![The pop-out window next to the page](docs/screenshots/pop-out.png)
+
 - It shows the timer big: its ring or disc, the time left and when it ends. Countdowns get **Pause/Resume** and **Reset** (**Restart** once finished) right in the window.
 - It keeps time while the page is in the background, and the alarm still chimes. The first click in the pop-out after an alarm only silences it.
 - One pop-out at a time: the icon on another card swaps what it shows. Click the pressed icon, or close the window, to end it.
-- **Browser support:** Chrome and Edge 116+ use [Document Picture-in-Picture](https://developer.chrome.com/docs/web-platform/document-picture-in-picture), which gives the buttons. Safari gets a video picture-in-picture of the same face, without buttons. Firefox supports neither, so the icon is hidden there.
+- **Browser support:** Chrome and Edge 116+ use [Document Picture-in-Picture](https://developer.chrome.com/docs/web-platform/document-picture-in-picture), which gives the buttons. Safari gets a video picture-in-picture of the same face, without buttons. Firefox (desktop and Android) supports neither, so the icon is hidden there.
 - The pop-out belongs to the tab that opened it. In the new-tab extension it closes if you navigate that tab to another site, so keep a Time Rings tab open for it.
+- **On phones:** no phone browser supports Document Picture-in-Picture, so there are no buttons. Chrome for Android, Samsung Internet and Safari on iPhone do support video picture-in-picture, so the icon should appear there and float the timer face (not yet tested on real phones). **Firefox for Android has no picture-in-picture API for web pages, so the icon is hidden there**; use Chrome or Samsung Internet for the pop-out. Turning on "desktop site" changes the layout, not which APIs the browser has, so it doesn't help.
 
 ## Daily briefing
 
@@ -294,8 +307,13 @@ Everything is stored under a single `localStorage` key, `timeRings.v1`. Changes 
 │   ├── app.js
 │   └── icons/
 ├── tools/
-│   └── build_ext.py      # index.html -> extension/ + zip
-├── docs/screenshots/
+│   ├── build_ext.py      # index.html -> extension/ + zip
+│   ├── shots.cjs         # regenerates docs/screenshots/
+│   ├── demo.cjs          # records docs/demo.mp4 and docs/demo.gif
+│   └── demo_music.py     # the demo's background music (CC0)
+├── docs/
+│   ├── demo.mp4, demo.gif, demo-music.ogg
+│   └── screenshots/
 ├── LICENSE
 └── README.md
 ```
@@ -313,6 +331,15 @@ python tools/build_ext.py index.html .
 
 This rewrites `extension/` and creates `time-rings-newtab.zip`. Do not edit `extension/app.js` or `extension/newtab.html` by hand. They are overwritten on each build.
 
+To regenerate the README screenshots and demo (needs Node, [Playwright](https://playwright.dev/) with its Chromium, Python 3 with Pillow and numpy, and ffmpeg):
+
+```bash
+node tools/shots.cjs           # every screenshot, or name some: node tools/shots.cjs pop-out mobile
+node tools/demo.cjs            # docs/demo.mp4 (with music), docs/demo.gif, docs/demo-music.ogg
+```
+
+Both use fixed sample data (a fictional birthdate, sample timers, rings and bookmarks), never your own settings. The screenshots also use a fixed date and time, so reruns only differ where the app changed.
+
 Handy checks while developing:
 
 - Open the browser console. There should be no errors.
@@ -326,7 +353,7 @@ Handy checks while developing:
 - Sunrise and sunset come from the time zone, so they are approximate (within minutes) for places far from the zone's reference city.
 - The "typical American" life data are US averages and will not fit everyone.
 - Chrome's extension Errors page can keep old entries after an update until you clear them.
-- The pop-out window closes with the tab that opened it, and Firefox has no picture-in-picture API for it.
+- The pop-out window closes with the tab that opened it, and Firefox (desktop and Android) has no picture-in-picture API for it.
 
 ## Inspiration
 
@@ -337,3 +364,5 @@ Handy checks while developing:
 ## License
 
 [MIT](LICENSE) © 2026 Amin Taheri
+
+The demo video's background music ([`docs/demo-music.ogg`](docs/demo-music.ogg)) is original. It is synthesized by [`tools/demo_music.py`](tools/demo_music.py) and dedicated to the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
