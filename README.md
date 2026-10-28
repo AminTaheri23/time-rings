@@ -309,8 +309,9 @@ Everything is stored under a single `localStorage` key, `timeRings.v1`. Changes 
 ├── tools/
 │   ├── build_ext.py      # index.html -> extension/ + zip
 │   ├── shots.cjs         # regenerates docs/screenshots/
-│   ├── demo.cjs          # records docs/demo.mp4 and docs/demo.gif
-│   └── demo_music.py     # the demo's background music (CC0)
+│   ├── demo.cjs          # records the demo footage, then builds docs/demo.mp4 and docs/demo.gif
+│   ├── demo_music.py     # the demo's background music (CC0), written to the same beat
+│   └── demo-video/       # Remotion project that adds the captions; timeline.json sets the beat
 ├── docs/
 │   ├── demo.mp4, demo.gif, demo-music.ogg
 │   └── screenshots/
@@ -338,7 +339,15 @@ node tools/shots.cjs           # every screenshot, or name some: node tools/shot
 node tools/demo.cjs            # docs/demo.mp4 (with music), docs/demo.gif, docs/demo-music.ogg
 ```
 
-Both use fixed sample data (a fictional birthdate, sample timers, rings and bookmarks), never your own settings. The screenshots also use a fixed date and time, so reruns only differ where the app changed.
+Both use fixed sample data (a fictional birthdate, sample timers, rings and bookmarks) and a fixed date and time, never your own settings, so reruns only differ where the app changed.
+
+The demo is built in three parts that share one beat, [`tools/demo-video/timeline.json`](tools/demo-video/timeline.json), which holds the captions and the bar each one lands on:
+
+1. `tools/demo.cjs` records the app with Playwright, acting on those bars. The 25-minute timer runs as a time-lapse.
+2. `tools/demo_music.py` writes the music to the same bars, with a swell into every caption and the app's chime when the timer ends.
+3. [Remotion](https://www.remotion.dev/) (in `tools/demo-video/`) lays the captions over the footage and the music.
+
+To change a caption, edit `timeline.json` and rerun `node tools/demo.cjs`. To preview the composition, run `npm run studio` in `tools/demo-video/` after a first run. The first run installs Remotion there with `npm ci`, and Remotion downloads its own headless Chrome unless `REMOTION_BROWSER` points to one. Remotion has [its own license](https://www.remotion.dev/license): it is free for individuals and small teams.
 
 Handy checks while developing:
 

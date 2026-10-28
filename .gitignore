@@ -1,3 +1,6 @@
 __pycache__/
 *.zip
 .DS_Store
+tools/demo-video/node_modules/
+tools/demo-video/public/
+tools/demo-video/out/
