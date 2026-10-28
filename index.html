@@ -138,11 +138,27 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .card.add:hover{color:var(--fg);border-color:var(--muted)}
 .card.done{animation:cardIn .5s backwards, donePulse 1.4s ease-in-out infinite}
 @keyframes donePulse{50%{box-shadow:0 0 0 3px var(--c)}}
+.card.add .s{display:none}
+/* compact bar (the default): each card is just its top row, a pill; the chevron at the end opens the full cards */
+.readout.compact{padding:4px 4px 8px}
+.readout.compact .card{flex:none;min-width:0;max-width:none;padding:7px 12px;border-radius:999px}
+.readout.compact .card :is(.val,.sub,.bar,.ctl,.tb){display:none}
+.card .ns, .readout.compact .card.ring .nm{display:none}
+.readout.compact .card .ns{display:inline}
+.readout.compact .card .nm{max-width:150px}
+.readout.compact .card.add{flex-direction:row;gap:5px;min-height:0;padding:7px 12px;font-size:12px}
+.readout.compact .card.add svg{width:14px;height:14px}
+.readout.compact .card.add .l{display:none}
+.readout.compact .card.add .s{display:inline}
+.readout .more{flex:none;align-self:center;width:30px;height:30px;padding:0;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:color .2s,border-color .2s}
+.readout .more:hover{color:var(--fg);border-color:var(--muted)}
+.readout .more svg{width:16px;height:16px;transition:transform .25s}
+.readout:not(.compact) .more svg{transform:rotate(180deg)}
 .foot{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 0}
 
 .onboard{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin:0 auto 8px;max-width:640px;font-size:14px;animation:cardIn .5s both}
 .onboard span{font-weight:600}
-@media (max-width:440px){ #addTimerBtn span{display:none} #addTimerBtn{padding:0 11px} .brand span{font-size:15px} }
+@media (max-width:440px){ #addTimerBtn span{display:none} #addTimerBtn{padding:0;width:34px;height:34px} .brand span{font-size:15px} .actions{gap:4px} .actions .icon-btn{width:34px;height:34px} }
 
 /* finished-timer glow: behind the content, above the page background */
 .alarm{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0}
@@ -281,6 +297,9 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
       </button>
       <button class="icon-btn" id="minBtn" type="button" aria-label="Minimal display" title="Minimal display (M)" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+      </button>
+      <button class="icon-btn" id="popBtn" type="button" aria-label="Pop out the rings" title="Pop out the rings (P)" aria-pressed="false" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none"/></svg>
       </button>
       <button class="icon-btn" id="settingsBtn" type="button" aria-label="Settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -649,6 +668,7 @@ const DEFAULTS = {
   ringOrder: ORDERS.slowOut.slice(), // outside → inside; holds ring ids and timer keys ('t:<id>')
   secDigits: true, shortcuts: 'bar',
   minimal: 0, // 0 off · 1 only the dial and the clock · 2 only the dial
+  cardsOpen: false, // the ring bar under the dial: false = compact pills, true = full cards
   brief: true, lastBrief: '', // daily briefing on/off, and the local date it last played
   meaning: { week: true, day: true, hour: true, month: true, age: true }, // color rings by meaning
   mcol: {},             // custom meaning colors, e.g. { weekend: '#ff0000' }; empty = defaults
@@ -683,6 +703,7 @@ function load() {
   if (!['off','bar','top'].includes(out.shortcuts)) out.shortcuts = DEFAULTS.shortcuts;
   out.secDigits = out.secDigits !== false;
   out.minimal = out.minimal === true ? 1 : [1, 2].includes(out.minimal) ? out.minimal : 0; // was a plain on/off
+  out.cardsOpen = out.cardsOpen === true;
   const okNum = (v, m) => typeof v === 'number' && isFinite(v) && Math.abs(v) <= m;
   if (!okNum(out.lat, 90) || !okNum(out.lon, 180)) { out.lat = null; out.lon = null; }
   if (!PALETTES[out.palette]) out.palette = DEFAULTS.palette;
@@ -1659,7 +1680,7 @@ function step(dt, now, tp) {
 /* ---------- center readout ---------- */
 let centerMode = '';
 const setText = (el, s) => { if (el.textContent !== s) el.textContent = s; };
-function updateCenter(T, now) {
+function centerInfo(T, now) { // what the center shows: the clock, the hovered ring, or the briefing step
   let mode = 'clock', label, main, sub, color = '';
   const hk = hover && activeSet.has(hover.key) ? hover.key : null;
   if (BRIEF.on && BRIEF.steps[BRIEF.i]) { // briefing: the center shows the step's headline number
@@ -1685,6 +1706,11 @@ function updateCenter(T, now) {
     const dk = discKey(), dt = dk && activeSet.has(dk) ? timerByKey(dk) : null;
     if (dt) sub = `${tName(dt)} · ${dt.done ? 'done' : timerInfo(dt, now).main + (dt.running ? ' left' : ' · paused')}`; // the disc's time left
   }
+  return { mode, label, main, sub, color };
+}
+const mainSize = (c) => Math.min(0.25, 0.92 / ((c.mode === 'clock' ? (S.secDigits ? 8 : 5) : Math.max(4, c.main.length)) * 0.6)); // the big line's font size, as a fraction of the center's width
+function updateCenter(T, now) {
+  const c = centerInfo(T, now), { mode, label, main, sub, color } = c;
   if (mode !== centerMode) {
     centerMode = mode;
     centerEl.classList.remove('swap'); void centerEl.offsetWidth; centerEl.classList.add('swap');
@@ -1694,8 +1720,7 @@ function updateCenter(T, now) {
   setText(cLabel, label); setText(cSub, sub);
   if (cMain.textContent !== main) {
     cMain.textContent = main;
-    const len = mode === 'clock' ? (S.secDigits ? 8 : 5) : Math.max(4, main.length);
-    cMain.style.fontSize = `calc(var(--cs) * ${Math.min(0.25, 0.92 / (len * 0.6)).toFixed(3)})`;
+    cMain.style.fontSize = `calc(var(--cs) * ${mainSize(c).toFixed(3)})`;
   }
 }
 
@@ -1705,6 +1730,7 @@ let cards = [];
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const DISC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 1 1 3.5 12z" fill="currentColor" stroke="none"/></svg>';
 const POP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none"/></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 const RING_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8" opacity=".35"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>';
 function setHover(h) {
   const prev = hover && hover.key;
@@ -1748,7 +1774,7 @@ function toggleCard(key) {
   }
   save(); bump(); relayout(); syncUI();
   const card = cards.find(c => c.key === key);
-  if (card) { setCardState(card); setText(card.pct, card.off ? 'Hidden' : ''); }
+  if (card) { setCardState(card); updateCards(Date.now()); }
   setHover(activeSet.has(key) ? { key, f: null, src: 'card' } : null);
 }
 function addCard(key, name, t, i) {
@@ -1756,6 +1782,7 @@ function addCard(key, name, t, i) {
   el.className = 'card'; el.dataset.key = key; el.style.animationDelay = (i * 30) + 'ms';
   el.innerHTML = '<div class="top"><button type="button" class="vis"><span class="dot"></span></button><span class="nm"></span><span class="pct"></span></div><div class="val"></div><div class="sub"></div><div class="bar"><i></i></div>' + (t ? '<div class="ctl"></div>' : '');
   el.querySelector('.nm').textContent = name;
+  if (key in RINGS) { el.classList.add('ring'); el.querySelector('.nm').insertAdjacentHTML('afterend', `<span class="ns">${RINGS[key].short}</span>`); } // compact pills use the short name, as on the ring
   if (t) { // top-row buttons: ring/disc for timers, pop-out for timers and custom rings
     const tb = (act, icon) => `<button type="button" class="tb" data-act="${act}" data-id="${t.id}">${icon}</button>`;
     const html = (isRingT(t) ? '' : tb('shape', DISC_ICON)) + (PIP.ok ? tb('pop', POP_ICON) : '');
@@ -1810,21 +1837,35 @@ function rebuildCards() {
   }
   const add = document.createElement('button');
   add.type = 'button'; add.className = 'card add'; add.style.animationDelay = (i * 30) + 'ms';
-  add.innerHTML = PLUS + '<span>Add timer</span>';
+  add.innerHTML = PLUS + '<span class="l">Add timer</span><span class="s">Timer</span>';
   add.addEventListener('click', openTimerDlg);
   const addR = document.createElement('button');
   addR.type = 'button'; addR.className = 'card add'; addR.style.animationDelay = (i * 30 + 30) + 'ms';
-  addR.innerHTML = RING_ICON + '<span>Add ring</span>';
+  addR.innerHTML = RING_ICON + '<span class="l">Add ring</span><span class="s">Ring</span>';
   addR.addEventListener('click', () => openRingDlg());
-  readoutEl.append(add, addR);
+  const more = document.createElement('button');
+  more.type = 'button'; more.className = 'more'; more.innerHTML = CHEVRON;
+  more.addEventListener('click', () => { S.cardsOpen = !S.cardsOpen; save(); applyCards(); updateCards(Date.now()); });
+  readoutEl.append(add, addR, more);
+  applyCards();
   paintCards();
   const h = hover; hover = null; setHover(h && (activeSet.has(h.key) ? h : null));
+}
+function applyCards() { // compact pills (the default) or the full cards
+  readoutEl.classList.toggle('compact', !S.cardsOpen);
+  const b = readoutEl.querySelector('.more');
+  if (!b) return;
+  b.setAttribute('aria-expanded', String(S.cardsOpen));
+  b.title = S.cardsOpen ? 'Show less' : 'Show full cards';
+  b.setAttribute('aria-label', b.title);
 }
 function updateCards(now) {
   for (const c of cards) {
     const x = c.t ? timerInfo(c.t, now) : CUR[c.key];
     if (!x) continue;
-    setText(c.val, x.long || x.main); setText(c.sub, x.sub); setText(c.pct, c.off ? 'Hidden' : (x.pct || ''));
+    setText(c.val, x.long || x.main); setText(c.sub, x.sub);
+    // a compact pill: a timer shows its time rather than a percentage, and a hidden ring says so with its outline alone
+    setText(c.pct, c.off ? (S.cardsOpen ? 'Hidden' : '') : c.t && !S.cardsOpen ? x.main : (x.pct || ''));
     c.bar.style.width = (clamp(x.p, 0, 1) * 100).toFixed(2) + '%';
   }
 }
@@ -1885,13 +1926,23 @@ function tickTimers(now) {
 }
 function timersChanged() { normOrder(S); bump(); relayout(); rebuildCards(); syncUI(); }
 
-/* ---------- pop-out: a timer in a small always-on-top window (picture-in-picture) ---------- */
+/* ---------- pop-out: the whole dial, or one timer, in a small always-on-top window (picture-in-picture) ---------- */
 // Document PiP (Chrome, Edge) gives a real mini page with buttons; elsewhere a canvas is streamed into a PiP video.
 const PIP = { doc: !!window.documentPictureInPicture, key: null, win: null, video: null, cv: null, g: null, bar: null, raf: 0, iv: 0, last: 0, theme: '', ctl: '' };
 PIP.ok = PIP.doc || !!(document.pictureInPictureEnabled && HTMLCanvasElement.prototype.captureStream);
 const pipOpen = () => !!(PIP.win || PIP.video);
 const pipTimer = () => S.timers.find(x => 't:' + x.id === PIP.key) || null; // looked up each frame: another tab may replace S
-const refreshPipBtns = () => { for (const c of cards) if (c.t) setTimerBtns(c); };
+const pipDial = () => PIP.key === 'dial'; // all rings, as on the page
+const popBtn = $('#popBtn');
+popBtn.hidden = !PIP.ok;
+function refreshPipBtns() {
+  for (const c of cards) if (c.t) setTimerBtns(c);
+  const on = pipOpen() && pipDial();
+  popBtn.setAttribute('aria-pressed', String(on));
+  popBtn.title = on ? 'Close the pop-out (P)' : 'Pop out the rings (P)';
+  popBtn.setAttribute('aria-label', on ? 'Close the pop-out' : 'Pop out the rings');
+}
+popBtn.addEventListener('click', () => togglePip('dial'));
 function togglePip(key) {
   if (pipOpen() && PIP.key === key) { closePip(); return; }
   PIP.key = key; PIP.ctl = '';
@@ -1903,6 +1954,7 @@ function closePip() {
   const w = PIP.win, v = PIP.video;
   PIP.win = null; PIP.video = null; PIP.key = null;
   if (w) { try { w.cancelAnimationFrame(PIP.raf); w.close(); } catch (e) { /* already closed */ } }
+  if (w && hover && hover.src === 'ring') setHover(null); // a hover in the pop-out gets no pointerleave once it's gone
   if (v) {
     clearInterval(PIP.iv);
     if (document.pictureInPictureElement === v) document.exitPictureInPicture().catch(() => {});
@@ -1911,7 +1963,7 @@ function closePip() {
   refreshPipBtns();
 }
 async function openDocPip() {
-  const w = await documentPictureInPicture.requestWindow({ width: 240, height: 290 });
+  const w = await documentPictureInPicture.requestWindow(pipDial() ? { width: 300, height: 300 } : { width: 240, height: 290 });
   PIP.win = w; PIP.theme = ''; PIP.last = -1e9;
   const d = w.document;
   d.title = 'Time Rings';
@@ -1928,6 +1980,12 @@ button:hover{border-color:var(--mu)}`;
   PIP.bar = d.createElement('div'); PIP.bar.className = 'bar';
   d.body.append(PIP.cv, PIP.bar);
   PIP.bar.addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'), t = pipTimer(); if (b && t) timerAct(t, b.dataset.act); });
+  PIP.cv.addEventListener('pointermove', (e) => { // hover a ring in the pop-out to explore it, like on the page
+    if (!pipDial() || BRIEF.on || (e.pointerType === 'touch' && !e.buttons)) return;
+    const r = PIP.cv.getBoundingClientRect(), D = dialSide(r.width, r.height);
+    setHover(hitTest(e, { left: r.left + (r.width - D) / 2, top: r.top + (r.height - D) / 2, width: D, height: D }));
+  });
+  PIP.cv.addEventListener('pointerleave', () => { if (hover && hover.src === 'ring') setHover(null); });
   let swallow = false; // like the page: the click that stops an alarm does nothing else
   w.addEventListener('pointerdown', (e) => {
     ensureAudio();
@@ -1943,12 +2001,12 @@ function pipFrame() {
   const w = PIP.win;
   if (!w) return;
   PIP.raf = w.requestAnimationFrame(pipFrame); // the pop-out's own frames keep running while this tab is hidden
-  const tp = performance.now(), now = Date.now();
-  if (tp - PIP.last < 100) return; // ~10 fps is plenty
+  const tp = performance.now(), now = Date.now(), dial = pipDial();
+  if (tp - PIP.last < (dial ? 33 : 100)) return; // ~10 fps is plenty for one timer; the dial's seconds ring wants ~30
   PIP.last = tp;
   tickTimers(now); // keeps the alarm on time even when the page itself is throttled in the background
-  const t = pipTimer();
-  if (!t) { closePip(); return; }
+  const t = dial ? null : pipTimer();
+  if (!dial && !t) { closePip(); return; }
   const d = w.document;
   if (PIP.theme !== String(isDark)) { // follow the page's theme
     PIP.theme = String(isDark);
@@ -1956,32 +2014,34 @@ function pipFrame() {
     d.documentElement.style.cssText = `color-scheme:${isDark ? 'dark' : 'light'};--bd:${v('--border')};--p2:${v('--panel2')};--mu:${v('--muted')}`;
     d.body.style.background = v('--bg'); d.body.style.color = v('--fg');
   }
-  const ctl = `${t.id}|${t.type}|${t.running}|${t.done}`;
+  const ctl = dial ? 'dial' : `${t.id}|${t.type}|${t.running}|${t.done}`;
   if (PIP.ctl !== ctl) { // countdowns get Pause/Resume and Reset (Restart once done); the rest only show
     PIP.ctl = ctl;
     const b = (act, label) => `<button type="button" data-act="${act}">${label}</button>`;
-    PIP.bar.innerHTML = t.type !== 'duration' ? '' : t.done ? b('restart', 'Restart') : b('toggle', t.running ? 'Pause' : 'Resume') + b('reset', 'Reset');
+    PIP.bar.innerHTML = dial || t.type !== 'duration' ? '' : t.done ? b('restart', 'Restart') : b('toggle', t.running ? 'Pause' : 'Resume') + b('reset', 'Reset');
   }
   const W = PIP.cv.clientWidth, H = PIP.cv.clientHeight, r = w.devicePixelRatio || 1;
   if (!W || !H) return;
   if (PIP.cv.width !== Math.round(W * r) || PIP.cv.height !== Math.round(H * r)) { PIP.cv.width = Math.round(W * r); PIP.cv.height = Math.round(H * r); }
-  paintFace(PIP.g, W, H, r, t, now);
+  if (dial) paintDial(PIP.g, W, H, r, now); else paintFace(PIP.g, W, H, r, t, now);
 }
 async function openVideoPip() {
   const cv = document.createElement('canvas'), v = document.createElement('video');
-  cv.width = cv.height = 360;
+  cv.width = cv.height = pipDial() ? 480 : 360;
   v.muted = true; v.playsInline = true;
   v.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none';
   document.body.append(v);
   PIP.cv = cv; PIP.g = cv.getContext('2d'); PIP.video = v;
   const draw = () => {
-    const now = Date.now(), t = pipTimer();
+    const now = Date.now(), t = pipTimer(), W = cv.width / 2;
     tickTimers(now);
-    if (t) paintFace(PIP.g, 180, 180, 2, t, now); else closePip();
+    if (pipDial()) paintDial(PIP.g, W, W, 2, now);
+    else if (t) paintFace(PIP.g, W, W, 2, t, now);
+    else closePip();
   };
   draw();
   v.srcObject = cv.captureStream();
-  PIP.iv = setInterval(draw, 250); // animation frames stop in a hidden tab; intervals keep going
+  PIP.iv = setInterval(draw, pipDial() ? 100 : 250); // animation frames stop in a hidden tab; intervals keep going
   v.addEventListener('leavepictureinpicture', () => { if (PIP.video === v) closePip(); });
   await v.play();
   await v.requestPictureInPicture();
@@ -2010,18 +2070,36 @@ function paintFace(g, W, H, r, t, now) { // the pop-out picture: one timer or cu
     g.save(); g.shadowColor = rgba(c, 0.9); g.shadowBlur = R * 0.3 * fl;
     g.strokeStyle = rgba(c, 0.6 * fl); g.lineWidth = R * 0.05; g.beginPath(); g.arc(X, Y, R * 0.975, 0, TAU); g.stroke(); g.restore();
   }
-  const inner = disc ? R : R * 0.8;
-  const text = (s, weight, size, y, color) => { // shrink to fit, with a soft halo so it reads over the disc
-    g.font = `${weight} ${size}px ${FONT}`;
-    const w = g.measureText(s).width, max = inner * 1.6;
-    if (w > max) g.font = `${weight} ${size * max / w}px ${FONT}`;
-    g.lineWidth = 3; g.lineJoin = 'round'; g.strokeStyle = rgba(BG, disc ? 0.55 : 0); g.strokeText(s, X, y);
-    g.fillStyle = color; g.fillText(s, X, y);
-  };
+  const inner = disc ? R : R * 0.8, max = inner * 1.6, halo = disc ? 0.55 : 0;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  text(tName(t).toUpperCase(), 800, inner * 0.13, Y - inner * 0.36, rgba(c));
-  text(x.main, 700, inner * 0.4, Y + inner * 0.02, rgba(FG));
-  text(x.sub, 600, inner * 0.115, Y + inner * 0.36, rgba(FG, 0.62));
+  fillFit(g, tName(t).toUpperCase(), 800, inner * 0.13, X, Y - inner * 0.36, max, rgba(c), halo);
+  fillFit(g, x.main, 700, inner * 0.4, X, Y + inner * 0.02, max, rgba(FG), halo);
+  fillFit(g, x.sub, 600, inner * 0.115, X, Y + inner * 0.36, max, rgba(FG, 0.62), halo);
+}
+const dialSide = (W, H) => Math.max(10, Math.min(W, H) - 12);
+function paintDial(g, W, H, r, now) { // the pop-out picture for all rings: the page's own dial, with its center drawn on
+  const tp = performance.now();
+  if (tp - lastT > 100) frame(tp); // the page stops drawing while its tab is hidden; keep it going from here
+  const D = dialSide(W, H), X = W / 2, Y = H / 2, cs = centerRad * 2 * D / size;
+  g.setTransform(r, 0, 0, r, 0, 0);
+  g.fillStyle = rgba(BG); g.fillRect(0, 0, W, H);
+  if (!size) return; // not laid out yet
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(cv, X - D / 2, Y - D / 2, D, D);
+  const c = centerInfo(LAST_T || snap(now), now), idle = c.mode === 'clock', halo = discKey() ? 0.55 : 0;
+  if (S.minimal === 2 && idle) return; // rings only: no clock either, until you hover a ring
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  fillFit(g, c.main, 700, cs * mainSize(c), X, Y, cs * 0.92, rgba(FG), halo);
+  if (S.minimal && idle) return; // minimal: just the time
+  fillFit(g, c.label.toUpperCase(), 700, Math.max(7, cs * 0.072), X, Y - cs * 0.17, cs * 0.9, c.color || rgba(FG, 0.62), halo);
+  fillFit(g, c.sub, 400, Math.max(7, cs * 0.066), X, Y + cs * 0.17, cs * 0.86, rgba(FG, 0.62), halo);
+}
+function fillFit(g, s, weight, size, x, y, max, color, halo) { // one line, shrunk to fit max; a soft halo reads over a disc
+  g.font = `${weight} ${size}px ${FONT}`;
+  const w = g.measureText(s).width;
+  if (w > max) g.font = `${weight} ${size * max / w}px ${FONT}`;
+  if (halo) { g.lineWidth = 3; g.lineJoin = 'round'; g.strokeStyle = rgba(BG, halo); g.strokeText(s, x, y); }
+  g.fillStyle = color; g.fillText(s, x, y);
 }
 
 /* ---------- drag cards to reorder rings (mouse: press and move · touch: long-press) ---------- */
@@ -2620,8 +2698,7 @@ function scheduleLayout() {
 }
 
 /* ---------- pointer: hover / tap to explore ---------- */
-function hitTest(e) {
-  const rect = cv.getBoundingClientRect();
+function hitTest(e, rect = cv.getBoundingClientRect()) { // rect: where the dial is drawn (the page, or the pop-out)
   const x = e.clientX - rect.left - rect.width / 2, y = e.clientY - rect.top - rect.height / 2;
   const d = Math.hypot(x, y) * (size / rect.width);
   let key = null;
@@ -2653,9 +2730,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { endBrief(); e.preventDefault(); }
     else if (e.key === 'ArrowRight' || ((e.key === ' ' || e.key === 'Enter') && !onButton)) { goBrief(BRIEF.i + 1); e.preventDefault(); }
     else if (e.key === 'ArrowLeft') { goBrief(BRIEF.i - 1); e.preventDefault(); }
-  } else if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open && !rdlg.open
+  } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !dlg.open && !rdlg.open
       && !(e.target.closest && e.target.closest('input, textarea, select, [contenteditable]'))) {
-    nextMinimal();
+    if (e.key === 'm' || e.key === 'M') nextMinimal();
+    else if ((e.key === 'p' || e.key === 'P') && PIP.ok) togglePip('dial');
   }
   dismissAlarm(); ensureAudio(); clearTitle();
 });
@@ -2815,7 +2893,7 @@ briefEl.addEventListener('pointerleave', () => { BRIEF.paused = false; briefEl.c
 
 /* ---------- main loop ---------- */
 let lastT = performance.now(), lastDom = -1e9;
-function loop(tp) {
+function frame(tp) {
   const dt = clamp((tp - lastT) / 1000, 0, 0.1); lastT = tp;
   const now = Date.now(), T = snap(now);
   AI = ageInfo(now);
@@ -2827,8 +2905,8 @@ function loop(tp) {
   draw(T, now);
   updateCenter(T, now);
   if (tp - lastDom > 100) { updateCards(now); paintCards(); lastDom = tp; }
-  requestAnimationFrame(loop);
 }
+function loop(tp) { frame(tp); requestAnimationFrame(loop); }
 
 /* ---------- boot ---------- */
 parseMS();
