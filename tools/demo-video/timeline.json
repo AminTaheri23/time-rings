@@ -1,0 +1,19 @@
+{
+  "bpm": 90,
+  "bars": 16,
+  "footageAt": 2,
+  "captions": [
+    { "bar": 0, "len": 1, "center": true, "text": "Time is your most valuable asset." },
+    { "bar": 1, "len": 1, "center": true, "text": "Yet it slips away, unseen." },
+    { "bar": 2, "len": 2, "accent": "#fbbf24", "text": "What gets measured gets managed." },
+    { "bar": 4, "len": 2, "accent": "#a3e635", "text": "See your day, week and year fill up." },
+    { "bar": 6, "len": 2, "accent": "#fb923c", "text": "Colored like daylight and the seasons." },
+    { "bar": 8, "len": 1, "accent": "#2dd4bf", "text": "Hard to feel time passing?", "sub": "Common with ADHD.", "quiet": true },
+    { "bar": 9, "len": 1, "accent": "#2dd4bf", "text": "Make yourself a promise.", "sub": "25 minutes. One task." },
+    { "bar": 10, "len": 2, "accent": "#2dd4bf", "text": "Watch it count down.", "sub": "Time you can see." },
+    { "bar": 12, "len": 1, "accent": "#2dd4bf", "text": "Keep it in sight, over any app." },
+    { "bar": 13, "len": 1, "accent": "#2dd4bf", "text": "Promise kept." },
+    { "bar": 14, "len": 2, "outro": true, "text": "Time Rings", "sub": "See your time.", "foot": "Free · Open source · No tracking", "url": "amintaheri23.github.io/time-rings" }
+  ],
+  "cues": { "lapse": [10.25, 13], "pop": 11.85, "done": 13 }
+}
