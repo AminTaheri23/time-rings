@@ -161,6 +161,7 @@ const DEFAULTS = {
   ringOrder: ORDERS.slowOut.slice(), // outside → inside; holds ring ids and timer keys ('t:<id>')
   secDigits: true, shortcuts: 'bar',
   minimal: 0, // 0 off · 1 only the dial and the clock · 2 only the dial
+  cardsOpen: false, // the ring bar under the dial: false = compact pills, true = full cards
   brief: true, lastBrief: '', // daily briefing on/off, and the local date it last played
   meaning: { week: true, day: true, hour: true, month: true, age: true }, // color rings by meaning
   mcol: {},             // custom meaning colors, e.g. { weekend: '#ff0000' }; empty = defaults
@@ -195,6 +196,7 @@ function load() {
   if (!['off','bar','top'].includes(out.shortcuts)) out.shortcuts = DEFAULTS.shortcuts;
   out.secDigits = out.secDigits !== false;
   out.minimal = out.minimal === true ? 1 : [1, 2].includes(out.minimal) ? out.minimal : 0; // was a plain on/off
+  out.cardsOpen = out.cardsOpen === true;
   const okNum = (v, m) => typeof v === 'number' && isFinite(v) && Math.abs(v) <= m;
   if (!okNum(out.lat, 90) || !okNum(out.lon, 180)) { out.lat = null; out.lon = null; }
   if (!PALETTES[out.palette]) out.palette = DEFAULTS.palette;
@@ -1221,6 +1223,7 @@ let cards = [];
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const DISC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 1 1 3.5 12z" fill="currentColor" stroke="none"/></svg>';
 const POP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none"/></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 const RING_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8" opacity=".35"/><path d="M12 4a8 8 0 0 1 8 8"/></svg>';
 function setHover(h) {
   const prev = hover && hover.key;
@@ -1264,7 +1267,7 @@ function toggleCard(key) {
   }
   save(); bump(); relayout(); syncUI();
   const card = cards.find(c => c.key === key);
-  if (card) { setCardState(card); setText(card.pct, card.off ? 'Hidden' : ''); }
+  if (card) { setCardState(card); updateCards(Date.now()); }
   setHover(activeSet.has(key) ? { key, f: null, src: 'card' } : null);
 }
 function addCard(key, name, t, i) {
@@ -1272,6 +1275,7 @@ function addCard(key, name, t, i) {
   el.className = 'card'; el.dataset.key = key; el.style.animationDelay = (i * 30) + 'ms';
   el.innerHTML = '<div class="top"><button type="button" class="vis"><span class="dot"></span></button><span class="nm"></span><span class="pct"></span></div><div class="val"></div><div class="sub"></div><div class="bar"><i></i></div>' + (t ? '<div class="ctl"></div>' : '');
   el.querySelector('.nm').textContent = name;
+  if (key in RINGS) { el.classList.add('ring'); el.querySelector('.nm').insertAdjacentHTML('afterend', `<span class="ns">${RINGS[key].short}</span>`); } // compact pills use the short name, as on the ring
   if (t) { // top-row buttons: ring/disc for timers, pop-out for timers and custom rings
     const tb = (act, icon) => `<button type="button" class="tb" data-act="${act}" data-id="${t.id}">${icon}</button>`;
     const html = (isRingT(t) ? '' : tb('shape', DISC_ICON)) + (PIP.ok ? tb('pop', POP_ICON) : '');
@@ -1326,21 +1330,35 @@ function rebuildCards() {
   }
   const add = document.createElement('button');
   add.type = 'button'; add.className = 'card add'; add.style.animationDelay = (i * 30) + 'ms';
-  add.innerHTML = PLUS + '<span>Add timer</span>';
+  add.innerHTML = PLUS + '<span class="l">Add timer</span><span class="s">Timer</span>';
   add.addEventListener('click', openTimerDlg);
   const addR = document.createElement('button');
   addR.type = 'button'; addR.className = 'card add'; addR.style.animationDelay = (i * 30 + 30) + 'ms';
-  addR.innerHTML = RING_ICON + '<span>Add ring</span>';
+  addR.innerHTML = RING_ICON + '<span class="l">Add ring</span><span class="s">Ring</span>';
   addR.addEventListener('click', () => openRingDlg());
-  readoutEl.append(add, addR);
+  const more = document.createElement('button');
+  more.type = 'button'; more.className = 'more'; more.innerHTML = CHEVRON;
+  more.addEventListener('click', () => { S.cardsOpen = !S.cardsOpen; save(); applyCards(); updateCards(Date.now()); });
+  readoutEl.append(add, addR, more);
+  applyCards();
   paintCards();
   const h = hover; hover = null; setHover(h && (activeSet.has(h.key) ? h : null));
+}
+function applyCards() { // compact pills (the default) or the full cards
+  readoutEl.classList.toggle('compact', !S.cardsOpen);
+  const b = readoutEl.querySelector('.more');
+  if (!b) return;
+  b.setAttribute('aria-expanded', String(S.cardsOpen));
+  b.title = S.cardsOpen ? 'Show less' : 'Show full cards';
+  b.setAttribute('aria-label', b.title);
 }
 function updateCards(now) {
   for (const c of cards) {
     const x = c.t ? timerInfo(c.t, now) : CUR[c.key];
     if (!x) continue;
-    setText(c.val, x.long || x.main); setText(c.sub, x.sub); setText(c.pct, c.off ? 'Hidden' : (x.pct || ''));
+    setText(c.val, x.long || x.main); setText(c.sub, x.sub);
+    // a compact pill: a timer shows its time rather than a percentage, and a hidden ring says so with its outline alone
+    setText(c.pct, c.off ? (S.cardsOpen ? 'Hidden' : '') : c.t && !S.cardsOpen ? x.main : (x.pct || ''));
     c.bar.style.width = (clamp(x.p, 0, 1) * 100).toFixed(2) + '%';
   }
 }

@@ -138,6 +138,22 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .card.add:hover{color:var(--fg);border-color:var(--muted)}
 .card.done{animation:cardIn .5s backwards, donePulse 1.4s ease-in-out infinite}
 @keyframes donePulse{50%{box-shadow:0 0 0 3px var(--c)}}
+.card.add .s{display:none}
+/* compact bar (the default): each card is just its top row, a pill; the chevron at the end opens the full cards */
+.readout.compact{padding:4px 4px 8px}
+.readout.compact .card{flex:none;min-width:0;max-width:none;padding:7px 12px;border-radius:999px}
+.readout.compact .card :is(.val,.sub,.bar,.ctl,.tb){display:none}
+.card .ns, .readout.compact .card.ring .nm{display:none}
+.readout.compact .card .ns{display:inline}
+.readout.compact .card .nm{max-width:150px}
+.readout.compact .card.add{flex-direction:row;gap:5px;min-height:0;padding:7px 12px;font-size:12px}
+.readout.compact .card.add svg{width:14px;height:14px}
+.readout.compact .card.add .l{display:none}
+.readout.compact .card.add .s{display:inline}
+.readout .more{flex:none;align-self:center;width:30px;height:30px;padding:0;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:color .2s,border-color .2s}
+.readout .more:hover{color:var(--fg);border-color:var(--muted)}
+.readout .more svg{width:16px;height:16px;transition:transform .25s}
+.readout:not(.compact) .more svg{transform:rotate(180deg)}
 .foot{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 0}
 
 .onboard{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin:0 auto 8px;max-width:640px;font-size:14px;animation:cardIn .5s both}
