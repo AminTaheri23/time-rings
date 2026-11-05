@@ -1189,8 +1189,8 @@ function centerInfo(T, now) { // what the center shows: the clock, the hovered r
       const x = hover.f == null ? CUR[hk] : atInfo(hk, hover.f, T);
       main = x.main; sub = x.sub;
     } else {
-      const t = timerByKey(hk), x = timerInfo(t, now);
-      label = tName(t); main = x.main; sub = x.sub;
+      const t = timerByKey(hk), x = timerInfo(t, now), hint = ringHint(t);
+      label = tName(t); main = x.main; sub = hint ? `${x.sub} · ${hint}` : x.sub;
     }
   } else {
     label = `${DAY3[T.dow]} · ${MON3[T.mo]} ${T.dt}`;
@@ -1393,17 +1393,124 @@ function timerAct(t, act) { // Pause/Resume, Reset, Restart, Remove, from a card
     case 'restart':
       t.done = false; t.running = true; t.endAt = now + t.total; t.remaining = t.total;
       break;
-    case 'del':
-      ghosts['t:' + t.id] = t;
+    case 'del': {
+      const key = 't:' + t.id, at = S.timers.indexOf(t), oi = S.ringOrder.indexOf(key);
+      ghosts[key] = t;
       S.timers = S.timers.filter(x => x !== t);
-      if (PIP.key === 't:' + t.id) closePip();
+      if (PIP.key === key) closePip();
       clearTitle(); save(); timersChanged();
+      showUndo(`${tName(t)} removed`, () => { // put it back where it was: same place in the list and on the dial
+        if (S.timers.some(x => x.id === t.id)) return;
+        delete ghosts[key];
+        S.timers.splice(Math.min(at, S.timers.length), 0, t);
+        S.ringOrder = S.ringOrder.filter(k => k !== key);
+        S.ringOrder.splice(oi < 0 ? S.ringOrder.length : Math.min(oi, S.ringOrder.length), 0, key);
+        if (t.shape === 'disc') for (const o of S.timers) if (o !== t) delete o.shape;
+        save(); timersChanged();
+      });
       return;
+    }
   }
   clearTitle(); save();
   const card = cards.find(c => c.t === t);
   if (card) renderCtl(card);
 }
+/* ---------- undo toast: removing a timer or ring can be taken back for a few seconds ---------- */
+const toastEl = $('#toast');
+const TOAST = { undo: null, timer: 0 };
+function showUndo(msg, undo) {
+  TOAST.undo = undo;
+  $('#toastMsg').textContent = msg;
+  toastEl.classList.add('on');
+  clearTimeout(TOAST.timer);
+  TOAST.timer = setTimeout(hideToast, 6000);
+}
+function hideToast() { clearTimeout(TOAST.timer); TOAST.undo = null; toastEl.classList.remove('on'); }
+function runUndo() { const u = TOAST.undo; hideToast(); if (u) u(); }
+$('#toastUndo').addEventListener('click', runUndo);
+toastEl.addEventListener('pointerenter', () => clearTimeout(TOAST.timer)); // reading it doesn't let it slip away
+toastEl.addEventListener('pointerleave', () => { if (TOAST.undo) { clearTimeout(TOAST.timer); TOAST.timer = setTimeout(hideToast, 2500); } });
+
+/* ---------- on-ring controls: click a timer ring to pause/resume it; hover shows Reset and Remove ---------- */
+// what a click on this ring does, or '' when it does nothing (custom rings, countdowns to a date while running)
+const ringClickAct = (t) => !t || isRingT(t) ? '' : t.done ? (t.type === 'duration' ? 'restart' : '') : t.type === 'duration' ? 'toggle' : '';
+function ringHint(t) { // the end of the center's sub-line while a timer ring is hovered
+  if (!t || isRingT(t)) return '';
+  const tap = matchMedia('(pointer:coarse)').matches ? 'tap' : 'click';
+  if (alarmOn && t.done) return `${tap} to dismiss`;
+  const a = ringClickAct(t);
+  return a === 'restart' ? `${tap} to restart` : a === 'toggle' ? `${tap} to ${t.running ? 'pause' : 'resume'}` : '';
+}
+const RESET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/></svg>';
+const X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const EDIT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>';
+const ringCtlEl = $('#ringCtl');
+const RCTL = { key: null, a: 0, over: false, until: 0, sig: '' };
+function ringCtlButtons(t) {
+  const b = (act, icon, label) => `<button type="button" data-act="${act}" aria-label="${label}" title="${label}">${icon}</button>`;
+  if (isRingT(t)) return b('edit', EDIT_ICON, `Edit ${tName(t)}`) + b('del', X_ICON, `Remove ${tName(t)}`);
+  const reset = t.type === 'duration' && (t.done || tRemain(t, Date.now()) < t.total - 999);
+  return (reset ? b('reset', RESET_ICON, `Reset ${tName(t)}`) : '') + b('del', X_ICON, `Remove ${tName(t)}`);
+}
+function placeRingCtl(tp) {
+  const hk = !BRIEF.on && !document.body.classList.contains('sorting') && hover && activeSet.has(hover.key) && !(hover.key in RINGS) ? hover.key : null;
+  if (hk && hk !== RCTL.key) { // a new ring: anchor the pill a little ahead of the pointer, on the same ring
+    RCTL.key = hk; RCTL.a = null;
+  }
+  if (hk) RCTL.until = tp + 280; // a short grace, so the pointer can slip off the ring and still reach the pill
+  else if (!RCTL.over && tp > RCTL.until) RCTL.key = null;
+  const t = RCTL.key && S.timers.find(x => 't:' + x.id === RCTL.key), v = t && vis[RCTL.key];
+  if (!t || !v || !activeSet.has(RCTL.key)) {
+    if (ringCtlEl.classList.contains('on')) { ringCtlEl.classList.remove('on'); RCTL.over = false; }
+    RCTL.key = null; return;
+  }
+  let r, a;
+  if (v.disc) { r = centerRad * 0.74; a = Math.PI / 2; } // a disc in the center: the pill sits near its bottom edge
+  else {
+    r = v.r;
+    if (hk === RCTL.key && hover.f != null) {
+      const pa = ang(hover.f), off = Math.min(1.1, 44 / Math.max(r, 1));
+      let d = RCTL.a == null ? Infinity : Math.atan2(Math.sin(pa - RCTL.a), Math.cos(pa - RCTL.a));
+      if (RCTL.a == null) RCTL.a = pa + off;
+      else if (Math.abs(d) * r > 150) RCTL.a = pa + Math.sign(d) * off; // the pointer wandered far along the ring: follow it
+    }
+    a = RCTL.a == null ? -Math.PI / 2 : RCTL.a;
+  }
+  ringCtlEl.style.left = (cx + r * Math.cos(a)).toFixed(1) + 'px';
+  ringCtlEl.style.top = (cy + r * Math.sin(a)).toFixed(1) + 'px';
+  const sig = RCTL.key + '|' + ringCtlButtons(t);
+  if (sig !== RCTL.sig) { RCTL.sig = sig; ringCtlEl.innerHTML = ringCtlButtons(t); ringCtlEl.style.setProperty('--c', t.color); }
+  ringCtlEl.classList.add('on');
+}
+ringCtlEl.addEventListener('pointerenter', () => {
+  RCTL.over = true;
+  if (RCTL.key && (!hover || hover.key !== RCTL.key)) setHover({ key: RCTL.key, f: null, src: 'ring' }); // keep the center on this timer
+});
+ringCtlEl.addEventListener('pointerleave', (e) => {
+  RCTL.over = false;
+  if (e.relatedTarget !== cv && e.pointerType !== 'touch' && hover && hover.src === 'ring') setHover(null);
+});
+ringCtlEl.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-act]'), t = RCTL.key && S.timers.find(x => 't:' + x.id === RCTL.key);
+  if (!b || !t) return;
+  e.stopPropagation();
+  if (b.dataset.act === 'edit') { openRingDlg(t); return; }
+  if (b.dataset.act === 'del') { RCTL.over = false; setHover(null); RCTL.key = null; ringCtlEl.classList.remove('on'); }
+  else if (vis[RCTL.key]) vis[RCTL.key].flash = 1;
+  timerAct(t, b.dataset.act);
+});
+let tapPrev = null, tapTouch = false; // on touch, the first tap on a ring only selects it; the next one acts
+cv.addEventListener('click', (e) => {
+  if (BRIEF.on) return;
+  const h = hitTest(e), t = h && !(h.key in RINGS) ? S.timers.find(x => 't:' + x.id === h.key) : null;
+  if (!t) return;
+  if (tapTouch && tapPrev !== h.key) return;
+  const act = ringClickAct(t);
+  if (!act) return;
+  if (vis[h.key]) vis[h.key].flash = 1;
+  timerAct(t, act);
+});
+
 function tickTimers(now) {
   for (const t of S.timers) {
     if (t.running && !t.done && t.endAt <= now) {
@@ -2202,8 +2309,10 @@ function hitTest(e, rect = cv.getBoundingClientRect()) { // rect: where the dial
   return { key, f: a / TAU, src: 'ring' };
 }
 cv.addEventListener('pointermove', (e) => { if (!BRIEF.on && (e.pointerType !== 'touch' || e.buttons)) setHover(hitTest(e)); });
-cv.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch' && hover && hover.src === 'ring') setHover(null); });
-cv.addEventListener('pointerdown', (e) => setHover(hitTest(e)));
+cv.addEventListener('pointerleave', (e) => { // slipping onto the on-ring pill keeps the ring hovered
+  if (e.pointerType !== 'touch' && hover && hover.src === 'ring' && !ringCtlEl.contains(e.relatedTarget)) setHover(null);
+});
+cv.addEventListener('pointerdown', (e) => { tapPrev = hover && hover.key; tapTouch = e.pointerType !== 'mouse'; setHover(hitTest(e)); });
 document.addEventListener('pointerdown', (e) => {
   if (alarmOn) { // the first click only stops the alarm, so it can't toggle or remove anything by accident
     dismissAlarm(); swallowClick = true; setTimeout(() => { swallowClick = false; }, 800);
@@ -2213,7 +2322,7 @@ document.addEventListener('pointerdown', (e) => {
   // a click outside the caption ends the briefing and still does its normal job (e.g. opens a bookmark)
   if (BRIEF.on && !briefEl.contains(e.target)) endBrief();
   ensureAudio(); clearTitle();
-  if (e.target !== cv && hover && hover.src === 'ring') setHover(null);
+  if (e.target !== cv && !ringCtlEl.contains(e.target) && hover && hover.src === 'ring') setHover(null);
   if (e.pointerType === 'touch' && hover && hover.src === 'card' && !e.target.closest('.card')) setHover(null); // no mouseleave on touch
 }, true);
 document.addEventListener('click', (e) => { if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2228,6 +2337,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'm' || e.key === 'M') nextMinimal();
     else if ((e.key === 'p' || e.key === 'P') && PIP.ok) togglePip('dial');
   }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && TOAST.undo
+      && !(e.target.closest && e.target.closest('input, textarea, [contenteditable]'))) { runUndo(); e.preventDefault(); }
   dismissAlarm(); ensureAudio(); clearTitle();
 });
 
@@ -2397,6 +2508,9 @@ function frame(tp) {
   step(dt, now, tp);
   draw(T, now);
   updateCenter(T, now);
+  placeRingCtl(tp);
+  const clickable = hover && hover.src === 'ring' && !BRIEF.on && !(hover.key in RINGS) && (alarmOn || ringClickAct(timerByKey(hover.key)));
+  if (cv.dataset.cur !== (clickable ? 'p' : '')) { cv.dataset.cur = clickable ? 'p' : ''; cv.style.cursor = clickable ? 'pointer' : ''; }
   if (tp - lastDom > 100) { updateCards(now); paintCards(); lastDom = tp; }
 }
 function loop(tp) { frame(tp); requestAnimationFrame(loop); }
