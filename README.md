@@ -101,8 +101,9 @@ Other Chromium browsers (Edge, Brave) should be able to load the same folder, th
 - **Drag a card** to reorder the rings.
 - **Gear icon** opens settings: birthdate, presets, palette, markers, meaning colors, briefing, shortcuts.
 - **Half-circle icon** switches theme. **Eye icon** toggles color-blind-friendly colors.
-- **Corner-brackets icon** (or the `M` key) steps through the minimal display: **Rings + clock**, then **Rings only** (no clock; hover a ring to see its value), then back to off. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, so timers can't be paused or removed until you switch it off. Ring names stay visible if color-blind mode is on.
+- **Corner-brackets icon** (or the `M` key) steps through the minimal display: **Rings + clock**, then **Rings only** (no clock; hover a ring to see its value), then back to off. In minimal mode only a faint icon and gear stay in the top-right corner. Cards are hidden then, but timers can still be controlled on the dial itself (see below). Ring names stay visible if color-blind mode is on.
 - **+ Timer** adds a timer (duration or until a clock time, with a label and a color). Choose **Show as: Disc** to draw it as a filled disc in the center; the pie icon on a timer's card switches it between ring and disc later.
+- **On the rings:** click a timer's ring to pause or resume it. When it finishes, the first click stops the alarm and the next one starts it again. Hover a timer's ring (tap it once on a phone) for a small pill with **Reset** and **✕ Remove**; custom rings get **Edit** and **✕** there. A removed timer or ring can be brought back with **Undo** (or `Ctrl`/`⌘`+`Z`) for a few seconds.
 - **Pop-out icon** (the small screen on a timer's or custom ring's card) floats it in a picture-in-picture window. Click it again, or close the window, to bring it back.
 - **Add ring** (the last card under the dial, or Settings → Rings → **＋ Custom ring**) adds a [custom ring](#custom-rings).
 

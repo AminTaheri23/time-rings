@@ -87,6 +87,23 @@ svg{display:block}
 .center.swap > *{animation:swapIn .38s cubic-bezier(.2,.8,.2,1) both}
 .center.swap > .c-main{animation-delay:.03s}
 .center.swap > .c-sub{animation-delay:.06s}
+/* on-ring controls: a small pill that sits on the hovered timer ring */
+.ring-ctl{position:absolute;left:0;top:0;z-index:3;display:flex;gap:2px;padding:3px;border-radius:999px;background:color-mix(in srgb, var(--panel) 92%, transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  border:1px solid color-mix(in srgb, var(--c, var(--border)) 55%, var(--border));box-shadow:var(--shadow);transform:translate(-50%,-50%) scale(.8);opacity:0;pointer-events:none;transition:opacity .16s ease, transform .2s cubic-bezier(.2,.8,.2,1)}
+.ring-ctl.on{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+.ring-ctl button{width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
+.ring-ctl button svg{width:14px;height:14px}
+.ring-ctl button:hover,.ring-ctl button:focus-visible{background:var(--panel2);color:var(--fg);outline:none}
+.ring-ctl button[data-act=del]:hover,.ring-ctl button[data-act=del]:focus-visible{background:color-mix(in srgb, var(--danger) 15%, transparent);color:var(--danger)}
+@media (pointer:coarse){ .ring-ctl button{width:34px;height:34px} .ring-ctl button svg{width:16px;height:16px} }
+@media (prefers-reduced-motion: reduce){ .ring-ctl{transition:opacity .16s ease} }
+/* undo toast after removing a timer */
+.toast{position:fixed;left:50%;bottom:max(18px, env(safe-area-inset-bottom));z-index:20;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);font-size:14px;transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:opacity .2s ease, transform .25s cubic-bezier(.2,.8,.2,1)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast button{height:32px;padding:0 12px;border-radius:10px;border:0;background:transparent;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;flex:none}
+.toast button:hover,.toast button:focus-visible{background:var(--panel2);outline:none}
 @keyframes swapIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
 
 .legend{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;color:var(--muted);margin:2px auto 6px;cursor:pointer;border:1px solid transparent;background:transparent;padding:6px 12px;border-radius:999px;transition:background-color .25s,border-color .25s}
@@ -317,6 +334,7 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
           <div class="c-main" id="cMain"></div>
           <div class="c-sub" id="cSub"></div>
         </div>
+        <div class="ring-ctl" id="ringCtl" role="toolbar" aria-label="Timer controls"></div>
       </div>
       <button class="legend" id="legend" type="button" title="Switch color palette">
         <span>fast</span><span class="grad" id="legendGrad"></span><span>slow</span><b id="legendName"></b>
@@ -336,6 +354,7 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
 </div>
 
 <div class="alarm" id="alarm" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
 <section class="brief" id="brief" hidden aria-label="Daily briefing">
   <div class="brief-top"><span id="briefHello"></span><span class="brief-dots" id="briefDots"></span></div>
   <div class="brief-body" id="briefBody">
