@@ -2515,6 +2515,50 @@ function frame(tp) {
 }
 function loop(tp) { frame(tp); requestAnimationFrame(loop); }
 
+
+/* ---------- feedback: a GitHub issue or an email, each with a short template ---------- */
+function browserInfo() { // e.g. "Chrome 131 on macOS · new-tab extension"
+  const ua = navigator.userAgent;
+  const b = [['Edg/', 'Edge'], ['OPR/', 'Opera'], ['Firefox/', 'Firefox'], ['Chrome/', 'Chrome'], ['Version/', 'Safari']].find(([k]) => ua.includes(k));
+  const ver = b ? (ua.split(b[0])[1] || '').split(/[ .]/)[0] : '';
+  const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'macOS' : /Win/.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'ChromeOS' : /Linux/.test(ua) ? 'Linux' : 'unknown OS';
+  return `${b ? b[1] + ' ' + ver : 'Unknown browser'} on ${os} · ${EXT ? 'new-tab extension' : 'web app'}`;
+}
+const FB = {
+  bug: { title: 'Bug: ', label: 'bug', subject: 'Time Rings: bug report',
+    parts: [['What happened?', ''], ['What did you expect instead?', ''], ['Steps to reproduce', '1. ']] },
+  idea: { title: 'Idea: ', label: 'enhancement', subject: 'Time Rings: feature request',
+    parts: [['What would you like?', ''], ['How would it help you?', '']] },
+};
+function fbHref(kind, via) {
+  const f = FB[kind], env = browserInfo();
+  if (via === 'issue') {
+    const body = f.parts.map(([q, a]) => `**${q}**\n${a}\n`).join('\n') + `\n---\n${env}`;
+    return `https://github.com/AminTaheri23/time-rings/issues/new?title=${encodeURIComponent(f.title)}&labels=${f.label}&body=${encodeURIComponent(body)}`;
+  }
+  const body = f.parts.map(([q, a]) => `${q}\n${a}\n`).join('\n') + `\n--\n${env}`;
+  return `mailto:amintaheri90@gmail.com?subject=${encodeURIComponent(f.subject)}&body=${encodeURIComponent(body)}`;
+}
+for (const a of document.querySelectorAll('a[data-fb]')) {
+  const fill = () => { a.href = fbHref(a.dataset.fb, a.dataset.via); };
+  fill(); a.addEventListener('pointerdown', fill); a.addEventListener('focus', fill);
+}
+const fbPop = $('#fbPop'), fbLink = $('#fbLink');
+function placeFb() { // just above the link, kept on screen
+  const r = fbLink.getBoundingClientRect(), w = fbPop.offsetWidth, h = fbPop.offsetHeight;
+  fbPop.style.left = Math.round(Math.min(Math.max(16, r.left + r.width / 2 - w / 2), innerWidth - w - 16)) + 'px';
+  fbPop.style.top = Math.round(r.top - h - 10 >= 8 ? r.top - h - 10 : r.bottom + 10) + 'px';
+}
+function toggleFb(open = fbPop.hidden) {
+  fbPop.hidden = !open; fbLink.setAttribute('aria-expanded', String(open));
+  if (open) { placeFb(); fbPop.querySelector('a').focus({ preventScroll: true }); }
+}
+fbLink.addEventListener('click', () => toggleFb());
+fbPop.addEventListener('click', (e) => { if (e.target.closest('a')) setTimeout(() => toggleFb(false), 0); });
+document.addEventListener('pointerdown', (e) => { if (!fbPop.hidden && !fbPop.contains(e.target) && e.target !== fbLink) toggleFb(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !fbPop.hidden) { toggleFb(false); fbLink.focus(); } });
+window.addEventListener('resize', () => { if (!fbPop.hidden) placeFb(); });
+
 /* ---------- boot ---------- */
 parseMS();
 applyTheme();
