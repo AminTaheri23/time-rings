@@ -229,6 +229,28 @@ body.sorting, body.sorting *{cursor:grabbing !important}
 .drawer-body{overflow-y:auto;padding:0 16px 28px;overscroll-behavior:contain}
 .drawer section{padding:16px 0;border-bottom:1px solid var(--border)}
 .drawer section.last{border-bottom:0}
+.drawer-head h2{flex:1}
+.g-all{height:32px;padding:0 10px;font-size:13px;color:var(--muted);margin-right:6px}
+.g-all:hover{color:var(--fg)}
+/* settings groups: collapsible, open by default */
+.grp{border-bottom:1px solid var(--border)}
+.grp > summary{list-style:none;display:flex;align-items:center;gap:10px;padding:15px 2px;cursor:pointer;-webkit-user-select:none;user-select:none;border-radius:10px;outline:none}
+.grp > summary::-webkit-details-marker{display:none}
+.grp > summary:focus-visible{box-shadow:0 0 0 3px var(--accent-ring)}
+.g-t{font-size:15px;font-weight:700;flex:none}
+.g-d{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s}
+.grp:not([open]) .g-d{opacity:1}
+.chev{width:18px;height:18px;flex:none;color:var(--muted);transform:rotate(-90deg);transition:transform .25s cubic-bezier(.2,.8,.2,1),color .2s}
+.grp[open] .chev{transform:none}
+.grp > summary:hover .chev,.grp > summary:hover .g-t{color:var(--fg)}
+.g-body{padding:0 0 6px}
+.grp[open] > .g-body{animation:gIn .25s cubic-bezier(.2,.8,.2,1)}
+@keyframes gIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.g-body > section{padding:4px 0 14px;border-bottom:0}
+.g-body > section + section{border-top:1px dashed var(--border);padding-top:14px}
+.field > span small{font-weight:500;font-size:12px}
+.hint + .field{margin-top:14px}
+@media (prefers-reduced-motion: reduce){ .grp[open] > .g-body{animation:none} .chev{transition:none} }
 .drawer h3{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
 .h3note{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px}
 .field{display:flex;flex-direction:column;gap:5px;font-size:13px;margin-bottom:10px}
@@ -397,84 +419,112 @@ body.bare .center.idle > *{visibility:hidden} /* rings only: no clock either, un
 <aside class="drawer" id="drawer" aria-hidden="true" aria-label="Settings">
   <div class="drawer-head">
     <h2>Settings</h2>
+    <button class="btn ghost g-all" id="grpAll" type="button">Collapse all</button>
     <button class="icon-btn" id="closeDrawer" type="button" aria-label="Close settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
     </button>
   </div>
   <div class="drawer-body">
-    <section>
-      <h3>You</h3>
-      <label class="field"><span>Birthdate</span><input type="date" id="birthdate"></label>
-      <label class="field"><span>Important ages</span><input type="text" id="milestones" spellcheck="false" autocomplete="off"></label>
-      <p class="hint">Comma-separated, 1–100. Add a name after the age, like <code>65 Retirement</code>.</p>
-    </section>
-    <section>
-      <h3>Preset</h3>
-      <div class="chips" id="presets"></div>
-    </section>
-    <section>
-      <h3>Rings <span class="h3note">color = how fast it cycles</span></h3>
-      <div class="list" id="ringList"></div>
-      <button class="btn ghost" id="addRingSet" type="button">＋ Custom ring</button>
-      <p class="hint">Your own time windows, like work hours every weekday or a trip next month. Each one gets a card under the dial.</p>
-    </section>
-    <section>
-      <h3>Meaning colors <span class="h3note">color shows what the time means</span></h3>
-      <div class="list" id="meaningList"></div>
-      <label class="field" style="margin-top:6px"><span>Location for sunrise and seasons</span></label>
-      <div class="loc-row">
-        <input type="number" id="lat" step="0.01" min="-90" max="90" aria-label="Latitude">
-        <input type="number" id="lon" step="0.01" min="-180" max="180" aria-label="Longitude">
-        <button class="btn ghost" id="locAuto" type="button">Auto</button>
+    <details class="grp" open data-g="you">
+      <summary><span class="g-t">You</span><span class="g-d">Birthdate, important ages, location</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="g-body">
+        <section>
+          <label class="field"><span>Birthdate</span><input type="date" id="birthdate"></label>
+          <label class="field"><span>Important ages</span><input type="text" id="milestones" spellcheck="false" autocomplete="off"></label>
+          <p class="hint">Comma-separated, 1–100. Add a name after the age, like <code>65 Retirement</code>.</p>
+          <label class="field"><span>Location <small>for sunrise, night and seasons</small></span></label>
+          <div class="loc-row">
+            <input type="number" id="lat" step="0.01" min="-90" max="90" aria-label="Latitude">
+            <input type="number" id="lon" step="0.01" min="-180" max="180" aria-label="Longitude">
+            <button class="btn ghost" id="locAuto" type="button">Auto</button>
+          </div>
+          <p class="hint" id="locHint"></p>
+        </section>
       </div>
-      <p class="hint" id="locHint"></p>
-      <button class="btn ghost" id="mcReset" type="button">Reset meaning colors</button>
-    </section>
-    <section>
-      <h3>Markers</h3>
-      <div class="list" id="markerList"></div>
-    </section>
-    <section>
-      <h3>Look</h3>
-      <div class="row"><span>Ring style</span><div class="seg" data-key="style" data-opts="arcs:Filling arcs,dot:Dial + dot"></div></div>
-      <div class="row"><span>Theme</span><div class="seg" data-key="theme" data-opts="auto:Auto,light:Light,dark:Dark"></div></div>
-      <div class="row"><span>Palette</span><select id="palette" aria-label="Palette"></select></div>
-      <div class="pal-strip" id="palStrip"></div>
-      <p class="hint" id="palDesc"></p>
-      <label class="switch"><span>Color-blind friendly</span><input type="checkbox" id="colorblind"><i></i></label>
-      <label class="switch"><span>Labels on rings</span><input type="checkbox" id="labels"><i></i></label>
-      <label class="switch"><span>Smooth seconds</span><input type="checkbox" id="smooth"><i></i></label>
-      <label class="switch"><span>Seconds digits</span><input type="checkbox" id="secDigits"><i></i></label>
-      <p class="hint">Turn off to hide the ticking seconds in the clock, cards and timers. The seconds ring keeps moving.</p>
-      <div class="row"><span>Minimal display</span><div class="seg" data-key="minimal" data-opts="0:Off,1:Rings + clock,2:Rings only"></div></div>
-      <p class="hint">Hides everything but the dial. Press M or use the corner button to step through Off, Rings + clock and Rings only.</p>
-    </section>
-    <section>
-      <h3>Layout</h3>
-      <div class="row"><span>Ring order</span>
-        <select id="order" aria-label="Ring order">
-          <option value="slowOut">Slowest outside</option>
-          <option value="sketch">Month outside (sketch)</option>
-          <option value="fastOut">Fastest outside</option>
-          <option value="custom" disabled>Custom (dragged)</option>
-        </select>
+    </details>
+    <details class="grp" open data-g="rings">
+      <summary><span class="g-t">Rings</span><span class="g-d">Which rings, order, time format</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="g-body">
+        <section>
+          <h3>Preset</h3>
+          <div class="chips" id="presets"></div>
+        </section>
+        <section>
+          <h3>Rings <span class="h3note">color = how fast it cycles</span></h3>
+          <div class="list" id="ringList"></div>
+          <button class="btn ghost" id="addRingSet" type="button">＋ Custom ring</button>
+          <p class="hint">Your own time windows, like work hours every weekday or a trip next month. Each one gets a card under the dial.</p>
+        </section>
+        <section>
+          <h3>Order and time</h3>
+          <div class="row"><span>Ring order</span>
+            <select id="order" aria-label="Ring order">
+              <option value="slowOut">Slowest outside</option>
+              <option value="sketch">Month outside (sketch)</option>
+              <option value="fastOut">Fastest outside</option>
+              <option value="custom" disabled>Custom (dragged)</option>
+            </select>
+          </div>
+          <p class="hint">Or drag the cards under the dial: left is the outermost ring. With the keyboard, focus a card’s dot and press Alt + ← / →.</p>
+          <div class="row"><span>Zero point</span><div class="seg" data-key="start" data-opts="bottom:Bottom,top:Top"></div></div>
+          <div class="row"><span>Hour ring</span><div class="seg" data-key="hour12" data-opts="false:24 h,true:12 h"></div></div>
+          <div class="row"><span>Week starts</span><div class="seg" data-key="weekStart" data-opts="0:Sunday,1:Monday"></div></div>
+        </section>
       </div>
-      <p class="hint">Or drag the cards under the dial: left is the outermost ring. With the keyboard, focus a card’s dot and press Alt + ← / →.</p>
-      <div class="row"><span>Zero point</span><div class="seg" data-key="start" data-opts="bottom:Bottom,top:Top"></div></div>
-      <div class="row"><span>Hour ring</span><div class="seg" data-key="hour12" data-opts="false:24 h,true:12 h"></div></div>
-      <div class="row"><span>Week starts</span><div class="seg" data-key="weekStart" data-opts="0:Sunday,1:Monday"></div></div>
-    </section>
-    <section>
-      <h3>Shortcuts</h3>
-      <div class="row"><span>Show</span><div class="seg" data-key="shortcuts" data-opts="off:Off,bar:Bookmarks bar,top:Most visited"></div></div>
-      <p class="hint" id="bmHint"></p>
-    </section>
-    <section>
-      <h3>Daily briefing</h3>
-      <label class="switch"><span>Brief me on the first new tab of each day</span><input type="checkbox" id="briefOn"><i></i></label>
-      <p class="hint">Walks through your life, year, month, week and today, one ring at a time (never minutes or seconds). Each step stays up long enough to read at an average 238 words per minute, plus 20%. Hover the caption to pause; Esc or a click skips.</p>
-      <button class="btn" id="briefPlay" type="button">Play the briefing now</button>
-    </section>
+    </details>
+    <details class="grp" open data-g="meaning">
+      <summary><span class="g-t">Meaning</span><span class="g-d">Meaning colors and markers</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="g-body">
+        <section>
+          <h3>Meaning colors <span class="h3note">color shows what the time means</span></h3>
+          <div class="list" id="meaningList"></div>
+          <button class="btn ghost" id="mcReset" type="button">Reset meaning colors</button>
+        </section>
+        <section>
+          <h3>Markers</h3>
+          <div class="list" id="markerList"></div>
+        </section>
+      </div>
+    </details>
+    <details class="grp" open data-g="look">
+      <summary><span class="g-t">Look</span><span class="g-d">Theme, palette, style, minimal display</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="g-body">
+        <section>
+          <h3>Colors</h3>
+          <div class="row"><span>Theme</span><div class="seg" data-key="theme" data-opts="auto:Auto,light:Light,dark:Dark"></div></div>
+          <div class="row"><span>Palette</span><select id="palette" aria-label="Palette"></select></div>
+          <div class="pal-strip" id="palStrip"></div>
+          <p class="hint" id="palDesc"></p>
+          <label class="switch"><span>Color-blind friendly</span><input type="checkbox" id="colorblind"><i></i></label>
+        </section>
+        <section>
+          <h3>Display</h3>
+          <div class="row"><span>Ring style</span><div class="seg" data-key="style" data-opts="arcs:Filling arcs,dot:Dial + dot"></div></div>
+          <label class="switch"><span>Labels on rings</span><input type="checkbox" id="labels"><i></i></label>
+          <label class="switch"><span>Smooth seconds</span><input type="checkbox" id="smooth"><i></i></label>
+          <label class="switch"><span>Seconds digits</span><input type="checkbox" id="secDigits"><i></i></label>
+          <p class="hint">Turn off to hide the ticking seconds in the clock, cards and timers. The seconds ring keeps moving.</p>
+          <div class="row"><span>Minimal display</span><div class="seg" data-key="minimal" data-opts="0:Off,1:Rings + clock,2:Rings only"></div></div>
+          <p class="hint">Hides everything but the dial. Press M or use the corner button to step through Off, Rings + clock and Rings only.</p>
+        </section>
+      </div>
+    </details>
+    <details class="grp" open data-g="newtab">
+      <summary><span class="g-t">New tab</span><span class="g-d">Shortcuts and daily briefing</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+      <div class="g-body">
+        <section>
+          <h3>Shortcuts</h3>
+          <div class="row"><span>Show</span><div class="seg" data-key="shortcuts" data-opts="off:Off,bar:Bookmarks bar,top:Most visited"></div></div>
+          <p class="hint" id="bmHint"></p>
+        </section>
+        <section>
+          <h3>Daily briefing</h3>
+          <label class="switch"><span>Brief me on the first new tab of each day</span><input type="checkbox" id="briefOn"><i></i></label>
+          <p class="hint">Walks through your life, year, month, week and today, one ring at a time (never minutes or seconds). Each step stays up long enough to read at an average 238 words per minute, plus 20%. Hover the caption to pause; Esc or a click skips.</p>
+          <button class="btn" id="briefPlay" type="button">Play the briefing now</button>
+        </section>
+      </div>
+    </details>
     <section class="last">
       <button class="btn danger" id="resetAll" type="button">Reset everything</button>
       <p class="hint">Settings, birthdate, timers and custom rings are stored only in this browser (localStorage).</p>
