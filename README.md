@@ -203,10 +203,10 @@ The pop-out icon on a timer's card (custom rings have one too) opens the timer i
 
 ![The pop-out window next to the page](docs/screenshots/pop-out.png)
 
-- It shows the timer big: its ring or disc, the time left and when it ends. Countdowns get **Pause/Resume** and **Reset** (**Restart** once finished) right in the window.
+- It shows the timer big: its ring or disc, the time left and when it ends. Countdowns get **Pause/Resume** and **Reset** (**Restart** once finished) right in the window. You can also just click the timer's face. In the pop-out of the whole dial, clicking a timer's ring pauses, resumes or restarts it, like on the page.
 - It keeps time while the page is in the background, and the alarm still chimes. The first click in the pop-out after an alarm only silences it.
 - One pop-out at a time: the icon on another card swaps what it shows. Click the pressed icon, or close the window, to end it.
-- **Browser support:** Chrome and Edge 116+ use [Document Picture-in-Picture](https://developer.chrome.com/docs/web-platform/document-picture-in-picture), which gives the buttons. Safari gets a video picture-in-picture of the same face, without buttons. Firefox (desktop and Android) supports neither, so the icon is hidden there.
+- **Browser support:** Chrome and Edge 116+ use [Document Picture-in-Picture](https://developer.chrome.com/docs/web-platform/document-picture-in-picture), which gives the buttons. Safari gets a video picture-in-picture of the same face, without buttons; for a single timer, its play/pause button pauses and resumes the timer (untested on real Safari). Firefox (desktop and Android) supports neither, so the icon is hidden there.
 - The pop-out belongs to the tab that opened it. In the new-tab extension it closes if you navigate that tab to another site, so keep a Time Rings tab open for it.
 - **On phones:** no phone browser supports Document Picture-in-Picture, so there are no buttons. Chrome for Android, Samsung Internet and Safari on iPhone do support video picture-in-picture, so the icon should appear there and float the timer face (not yet tested on real phones). **Firefox for Android has no picture-in-picture API for web pages, so the icon is hidden there**; use Chrome or Samsung Internet for the pop-out. Turning on "desktop site" changes the layout, not which APIs the browser has, so it doesn't help.
 

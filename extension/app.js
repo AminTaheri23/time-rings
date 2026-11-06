@@ -1559,6 +1559,7 @@ function closePip() {
     clearInterval(PIP.iv);
     if (document.pictureInPictureElement === v) document.exitPictureInPicture().catch(() => {});
     v.srcObject = null; v.remove();
+    pipMediaKeys(false);
   }
   refreshPipBtns();
 }
@@ -1586,6 +1587,11 @@ button:hover{border-color:var(--mu)}`;
     setHover(hitTest(e, { left: r.left + (r.width - D) / 2, top: r.top + (r.height - D) / 2, width: D, height: D }));
   });
   PIP.cv.addEventListener('pointerleave', () => { if (hover && hover.src === 'ring') setHover(null); });
+  PIP.cv.addEventListener('click', (e) => { // like the page: click a timer's ring (or a lone timer's face) to pause, resume or restart it
+    const t = pipClickTarget(e);
+    if (t) { timerAct(t, ringClickAct(t)); if (vis['t:' + t.id]) vis['t:' + t.id].flash = 1; PIP.last = -1e9; }
+  });
+  PIP.cv.addEventListener('pointermove', (e) => { const t = pipClickTarget(e); PIP.cv.style.cursor = t ? 'pointer' : ''; });
   let swallow = false; // like the page: the click that stops an alarm does nothing else
   w.addEventListener('pointerdown', (e) => {
     ensureAudio();
@@ -1596,6 +1602,36 @@ button:hover{border-color:var(--mu)}`;
   w.addEventListener('pagehide', () => { if (PIP.win === w) closePip(); }); // closed with its own ✕
   refreshPipBtns();
   pipFrame();
+}
+// a video pop-out can't take clicks, but its play/pause button can drive a lone countdown timer
+function pipMediaKeys(on) {
+  const ms = navigator.mediaSession;
+  if (!ms || !ms.setActionHandler) return;
+  const act = (want) => () => {
+    const t = !pipDial() && pipTimer();
+    if (t && t.type === 'duration') {
+      const a = ringClickAct(t);
+      if (a === 'restart' || (a === 'toggle' && t.running !== want)) timerAct(t, a);
+    }
+    syncMediaState();
+    if (PIP.video && PIP.video.paused) PIP.video.play().catch(() => {}); // keep the picture moving either way
+  };
+  for (const [k, want] of [['play', true], ['pause', false]]) { try { ms.setActionHandler(k, on ? act(want) : null); } catch (e) { /* not supported */ } }
+  if (on) syncMediaState(); else try { ms.playbackState = 'none'; } catch (e) { /* fine */ }
+}
+function syncMediaState() { // the play/pause icon follows the timer, not the video
+  const t = PIP.video && !pipDial() && pipTimer();
+  try { if (navigator.mediaSession) navigator.mediaSession.playbackState = t && t.type === 'duration' ? (t.running ? 'playing' : 'paused') : 'playing'; } catch (e) { /* fine */ }
+}
+function pipClickTarget(e) { // the timer a click in the pop-out acts on, or null
+  if (BRIEF.on) return null;
+  let t;
+  if (pipDial()) {
+    const r = PIP.cv.getBoundingClientRect(), D = dialSide(r.width, r.height);
+    const h = hitTest(e, { left: r.left + (r.width - D) / 2, top: r.top + (r.height - D) / 2, width: D, height: D });
+    t = h && !(h.key in RINGS) ? S.timers.find(x => 't:' + x.id === h.key) : null;
+  } else t = pipTimer();
+  return t && ringClickAct(t) ? t : null;
 }
 function pipFrame() {
   const w = PIP.win;
@@ -1636,13 +1672,14 @@ async function openVideoPip() {
     const now = Date.now(), t = pipTimer(), W = cv.width / 2;
     tickTimers(now);
     if (pipDial()) paintDial(PIP.g, W, W, 2, now);
-    else if (t) paintFace(PIP.g, W, W, 2, t, now);
+    else if (t) { paintFace(PIP.g, W, W, 2, t, now); syncMediaState(); }
     else closePip();
   };
   draw();
   v.srcObject = cv.captureStream();
   PIP.iv = setInterval(draw, pipDial() ? 100 : 250); // animation frames stop in a hidden tab; intervals keep going
   v.addEventListener('leavepictureinpicture', () => { if (PIP.video === v) closePip(); });
+  pipMediaKeys(true);
   await v.play();
   await v.requestPictureInPicture();
   refreshPipBtns();
