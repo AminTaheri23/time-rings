@@ -260,6 +260,8 @@ Site icons come from Chrome's local favicon cache. `chrome://` links and `javasc
 
 ## Settings reference
 
+The gear opens settings in five groups, all open at first: **You** (birthdate, important ages, location), **Rings** (preset, which rings, order, zero point, 12/24 h, week start), **Meaning** (meaning colors and markers), **Look** (theme, palette, color-blind mode, ring style, labels, seconds, minimal display) and **New tab** (shortcuts, daily briefing). Click a group's title to fold it, or use **Collapse all**; the browser remembers which ones you folded.
+
 | Setting | Default |
 | --- | --- |
 | Birthdate | empty |
@@ -278,7 +280,7 @@ Site icons come from Chrome's local favicon cache. `chrome://` links and `javasc
 | Meaning colors | On for week, day, hour, month, age |
 | Daily briefing | On |
 
-Everything is stored under a single `localStorage` key, `timeRings.v1`. Changes sync between open tabs.
+Everything is stored under a single `localStorage` key, `timeRings.v1`. (Which settings groups are folded is a separate, per-browser key, `timeRings.ui.closed`.) Changes sync between open tabs.
 
 ## Privacy
 

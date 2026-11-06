@@ -1977,6 +1977,21 @@ drawer.inert = true;
 function openDrawer() { drawer.inert = false; drawer.classList.add('on'); scrim.classList.add('on'); drawer.setAttribute('aria-hidden', 'false'); setTimeout(() => $('#closeDrawer').focus(), 60); }
 function closeDrawer() { drawer.classList.remove('on'); scrim.classList.remove('on'); drawer.setAttribute('aria-hidden', 'true'); drawer.inert = true; }
 $('#settingsBtn').addEventListener('click', openDrawer);
+
+/* settings groups: open by default; which ones you closed is remembered in this browser */
+const GRP_KEY = 'timeRings.ui.closed';
+const grps = [...document.querySelectorAll('.grp')];
+let grpClosed = [];
+try { grpClosed = JSON.parse(localStorage.getItem(GRP_KEY) || '[]') || []; } catch (e) { /* storage blocked: all open */ }
+for (const g of grps) if (grpClosed.includes(g.dataset.g)) g.open = false;
+function syncGrpAll() { $('#grpAll').textContent = grps.every(g => !g.open) ? 'Expand all' : 'Collapse all'; }
+function saveGrps() {
+  syncGrpAll();
+  try { localStorage.setItem(GRP_KEY, JSON.stringify(grps.filter(g => !g.open).map(g => g.dataset.g))); } catch (e) { /* fine */ }
+}
+for (const g of grps) g.addEventListener('toggle', saveGrps);
+$('#grpAll').addEventListener('click', () => { const open = grps.every(g => !g.open); for (const g of grps) g.open = open; saveGrps(); });
+syncGrpAll();
 $('#closeDrawer').addEventListener('click', closeDrawer);
 scrim.addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawer.classList.contains('on')) closeDrawer(); });
